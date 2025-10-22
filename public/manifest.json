@@ -1,0 +1,22 @@
+{
+  "name": "Notificador de Fórmulas",
+  "short_name": "Notificador",
+  "description": "Notificação de fórmulas prontas (Bioessência)",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#212121",
+  "theme_color": "#00796b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "images/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "images/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}

@@ -1,0 +1,180 @@
+/* --- Dark Mode Básico --- */
+body {
+    background-color: #212121;
+    color: #f5f5f5;
+}
+.card {
+    background-color: #333;
+    margin-bottom: 25px;
+}
+.card .card-content {
+    /* Padding padrão para desktop */
+    padding: 24px;
+}
+.card .card-title,
+.input-field label,
+input, textarea, p, h5, span {
+    color: #f5f5f5 !important;
+}
+
+/* --- Ajustes de Inputs (Foco) --- */
+input[type=number]:not(.browser-default):focus:not([readonly]),
+input[type=text]:not(.browser-default):focus:not([readonly]),
+input.datepicker:focus:not([readonly]),
+textarea.materialize-textarea:focus:not([readonly]) {
+    border-bottom: 1px solid #26a69a;
+    box-shadow: 0 1px 0 0 #26a69a;
+}
+input[type=number]:not(.browser-default),
+input[type=text]:not(.browser-default),
+input.datepicker,
+textarea.materialize-textarea {
+    border-bottom: 1px solid #9e9e9e !important;
+}
+
+/* --- Ajustes Radio Buttons --- */
+[type="radio"]:not(:checked)+span:before,
+[type="radio"]:checked+span:before {
+    border: 2px solid #888;
+}
+[type="radio"]:checked+span:after {
+    background: #26a69a;
+    border: 2px solid #26a69a;
+}
+#outro-telefone-input {
+    color: #f5f5f5 !important;
+}
+
+/* --- Caixa de Texto (Notificador) --- */
+#mensagem-final {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    height: 200px !important;
+}
+
+/* --- Outros (Notificador) --- */
+.container { 
+    max-width: 900px;
+    margin-top: 30px; 
+}
+.loader { 
+    display: none; 
+    margin-top: 20px; 
+}
+#area-resultado { 
+    display: none; 
+}
+#aviso-ja-enviado {
+    display: none;
+    margin-top: 15px;
+}
+
+/* --- Estilos da Área de Entrega --- */
+#area-entrega {
+    display: none; /* Começa escondida */
+    margin-top: 20px;
+}
+#lista-endereco.collection {
+    border-color: #555;
+}
+#lista-endereco .collection-header {
+    background-color: #00796b; /* Teal */
+    border-bottom-color: #555;
+    color: white;
+    font-size: 1.1rem;
+}
+#lista-endereco .collection-header .material-icons {
+    color: white;
+    margin-right: 10px;
+    vertical-align: middle;
+}
+#lista-endereco .collection-item {
+    background-color: #424242 !important;
+    border-bottom-color: #555 !important;
+    color: #f5f5f5;
+}
+#lista-endereco .collection-item strong {
+    color: #80cbc4; /* Teal claro */
+    margin-right: 8px;
+    min-width: 70px;
+    display: inline-block;
+}
+
+
+/* --- Estilos do Histórico (Card 2) --- */
+.collection {
+    border-color: #555;
+}
+.collection-item {
+    background-color: #424242 !important;
+    border-bottom-color: #555 !important;
+    color: #f5f5f5;
+    padding-left: 20px !important;
+}
+.collection-item .title {
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+.collection-item p {
+    margin: 5px 0 0 0;
+    color: #ccc !important;
+    font-size: 0.9rem;
+}
+.collection-item .secondary-content {
+    color: white;
+}
+.badge.green { font-weight: bold; }
+.badge.red { font-weight: bold; }
+
+/* Filtro de Data (Dark Mode) */
+.datepicker-modal { background-color: #424242; }
+.datepicker-date-display, .datepicker-weekday-display { background-color: #00796b; }
+.datepicker-table th, .datepicker-calendar-container { color: #f5f5f5; }
+.datepicker-day-button:not(.is-disabled) { color: #f5f5f5; }
+.datepicker-day-button.is-today { color: #26a69a; font-weight: bold; }
+.datepicker-day-button.is-selected { background-color: #26a69a; color: white !important; }
+.datepicker-close, .datepicker-done, .datepicker-cancel { color: #26a69a; }
+.select-month, .select-year { color: #f5f5f5; background-color: #424242; }
+.select-dropdown { background-color: #424242; }
+.select-dropdown li.selected { background-color: #00796b; }
+.select-dropdown li { color: #f5f5f5; }
+
+/* Botões do Filtro */
+#filtro-area-botoes {
+    padding-top: 1.5rem;
+}
+
+/* Botão Carregar Mais */
+#btn-carregar-mais {
+    color: #26a69a;
+    font-weight: bold;
+    display: none;
+}
+#carregar-mais-area {
+    margin-top: 15px;
+}
+
+/* --- NOVO: Media Query para Responsividade --- */
+@media (max-width: 600px) {
+    .container {
+        /* Remove o padding lateral no container principal */
+        width: 100%;
+        margin-top: 5px;
+    }
+    .card .card-content {
+        /* Diminui o padding dos cards em telas pequenas */
+        padding: 15px;
+    }
+    #filtro-area-botoes {
+        /* Alinha os botões do filtro no centro em telas pequenas */
+        padding-top: 0.5rem;
+        text-align: center;
+    }
+    #lista-endereco .collection-item strong {
+        /* Permite que o label do endereço quebre a linha */
+        display: block;
+        min-width: 0;
+        margin-bottom: 5px;
+    }
+}

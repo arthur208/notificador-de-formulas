@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notificador de Fórmulas</title>
+    
+    <meta name="theme-color" content="#00796b">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="images/icon-192.png">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400&family=Roboto:wght@400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        
+        <div class="card">
+            <div class="card-content">
+                <span class="card-title">Notificador de Fórmulas</span>
+                
+                <div id="area-busca">
+                    <div class="input-field">
+                        <input placeholder="Digite o código da receita" id="codigo_receita" type="number" class="validate">
+                        <label for="codigo_receita">Código da Receita</label>
+                    </div>
+                    <button class="btn waves-effect waves-light" id="btn-buscar">
+                        Buscar Cliente <i class="material-icons right">search</i>
+                    </button>
+                </div>
+
+                <div class="preloader-wrapper small active loader" id="loader-busca">
+                    <div class="spinner-layer spinner-blue-only">
+                        <div class="circle-clipper left"><div class="circle"></div></div>
+                        <div class="gap-patch"><div class="circle"></div></div>
+                        <div class="circle-clipper right"><div class="circle"></div></div>
+                    </div>
+                </div>
+
+                <div id="area-resultado">
+                    <div class="card-panel orange darken-2" id="aviso-ja-enviado">
+                        <span class="white-text">
+                            <strong>AVISO:</strong> Uma mensagem para esta receita já foi enviada com sucesso anteriormente.
+                        </span>
+                    </div>
+                    <h5 id="nome-cliente-display"></h5>
+                    <input type="hidden" id="codigo-receita-hidden">
+                    <input type="hidden" id="nome-cliente-hidden">
+                    <div class="row" id="area-entrega">
+                        <div class="col s12">
+                            <ul class="collection with-header" id="lista-endereco">
+                                <li class="collection-header">
+                                    <i class="material-icons left">local_shipping</i>
+                                    <strong>Dados de Entrega</strong>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col s12 m7">
+                            <p><b>Mensagem para Envio:</b></p>
+                            <div class="input-field">
+                                <textarea id="mensagem-final" class="materialize-textarea" rows="10"></textarea>
+                                <label for="mensagem-final">Texto da Mensagem</label>
+                            </div>
+                        </div>
+                        <div class="col s12 m5">
+                            <p><b>Selecione o telefone para envio:</b></p>
+                            <div id="lista-telefones"></div>
+                            <div id="campo-outro-telefone">
+                                <p><label><input type="radio" name="telefone" id="radio-outro" value="outro" /><span>Outro (digitar):</span></label></p>
+                                <div class="input-field">
+                                    <input type="text" id="outro-telefone-input" placeholder="Ex: 5544912345678">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col s12">
+                            <button class="btn waves-effect waves-light green" id="btn-enviar">
+                                Enviar Mensagem <i class="material-icons right">send</i>
+                            </button>
+                            <button class="btn waves-effect waves-light red lighten-2" id="btn-cancelar">
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-content">
+                <span class="card-title">Histórico de Envios</span>
+                <div class="row" id="filtro-area">
+                    <div class="input-field col s6 m4">
+                        <input type="text" class="datepicker" id="filtro-data-inicio">
+                        <label for="filtro-data-inicio">Data Início</label>
+                    </div>
+                    <div class="input-field col s6 m4">
+                        <input type="text" class="datepicker" id="filtro-data-fim">
+                        <label for="filtro-data-fim">Data Fim</label>
+                    </div>
+                    <div class="input-field col s12 m4" id="filtro-area-botoes">
+                        <button class="btn-small" id="btn-filtrar">Filtrar</button>
+                        <button class="btn-small grey" id="btn-limpar-filtro">Limpar</button>
+                    </div>
+                </div>
+                <ul class="collection" id="lista-logs">
+                    <li class="collection-item center-align" id="logs-loader">
+                        <div class="preloader-wrapper small active">
+                            <div class="spinner-layer spinner-blue-only"><div class="circle-clipper left"><div class="circle"></div></div><div class="gap-patch"><div class="circle"></div></div><div class="circle-clipper right"><div class="circle"></div></div></div>
+                        </div>
+                    </li>
+                </ul>
+                <div class="center-align" id="carregar-mais-area">
+                    <button class="btn-flat waves-effect" id="btn-carregar-mais">
+                        Carregar Mais Antigos
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script src="app.js"></script>
+
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+              console.log('ServiceWorker registrado com sucesso:', registration.scope);
+            })
+            .catch(error => {
+              console.log('Falha ao registrar ServiceWorker:', error);
+            });
+        });
+      }
+    </script>
+</body>
+</html>
