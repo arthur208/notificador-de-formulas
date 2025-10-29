@@ -2,7 +2,8 @@
 document.addEventListener('DOMContentLoaded', function() {
     M.AutoInit();
     
-    const i18n_ptBR = {
+    // Configuração de internacionalização para o Datepicker (Calendário)
+    const i18n_pt_BR = {
         cancel: 'Cancelar',
         clear: 'Limpar',
         done: 'Ok',
@@ -14,11 +15,12 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     const datepickerInicioEl = document.getElementById('filtro-data-inicio');
-    M.Datepicker.init(datepickerInicioEl, { format: 'yyyy-mm-dd', autoClose: true, i18n: i18n_ptBR });
+    M.Datepicker.init(datepickerInicioEl, { format: 'yyyy-mm-dd', autoClose: true, i18n: i18n_pt_BR });
     const datepickerFimEl = document.getElementById('filtro-data-fim');
-    M.Datepicker.init(datepickerFimEl, { format: 'yyyy-mm-dd', autoClose: true, i18n: i18n_ptBR });
+    M.Datepicker.init(datepickerFimEl, { format: 'yyyy-mm-dd', autoClose: true, i18n: i18n_pt_BR });
 
-    carregarLogs(true);
+    // --- LÓGICA DE INICIALIZAÇÃO ---
+    carregarLogs(true); // Carrega histórico
 });
 
 // --- Seletores de Elementos (Notificador) ---
@@ -37,7 +39,6 @@ const mensagemFinalEl = document.getElementById('mensagem-final');
 const radioOutro = document.getElementById('radio-outro');
 const inputOutroTelefone = document.getElementById('outro-telefone-input');
 const avisoJaEnviadoEl = document.getElementById('aviso-ja-enviado');
-// NOVO (Notificador)
 const areaEntrega = document.getElementById('area-entrega');
 const listaEnderecoEl = document.getElementById('lista-endereco');
 
@@ -83,40 +84,40 @@ btnLimparFiltro.addEventListener('click', () => {
 });
 
 // --- Funções (Notificador) ---
+
+/**
+ * Busca os dados do cliente e da receita no backend.
+ */
 async function buscarCliente() {
     const codigo = inputCodigoReceita.value;
     if (!codigo) { M.toast({html: 'Por favor, digite um código de receita.'}); return; }
+    
     areaBusca.style.display = 'none';
     loaderBusca.style.display = 'block';
     
-    // Limpa a tela anterior antes da nova busca
     resetarTelaParcialmente();
 
     try {
-        const response = await fetch(`http://192.168.254.71/api/cliente/${codigo}`);
+        // MODIFICADO: URL Relativa. Removemos o IP fixo.
+        // O navegador vai chamar /api/cliente/... no mesmo host que serviu esta página.
+        const response = await fetch(`/api/cliente/${codigo}`);
+        
         if (!response.ok) {
             const erro = await response.json();
             throw new Error(erro.erro || 'Cliente não encontrado.');
         }
         
-        // Recebe o payload completo
         const data = await response.json();
         
-        // 1. Lida com o aviso de 'Já Enviado'
         if (data.jaEnviado) {
             avisoJaEnviadoEl.style.display = 'block';
         }
-
-        // 2. Lida com os dados de Entrega (NOVO)
         if (data.isDelivery && data.deliveryAddress) {
             preencherDadosEntrega(data.deliveryAddress);
             areaEntrega.style.display = 'block';
         }
-
-        // 3. Preenche os dados do cliente (Nome, Telefones, Mensagem Sugerida)
         preencherDadosCliente(data.dadosCliente, data.mensagemSugerida, codigo);
         
-        // 4. Mostra o resultado
         loaderBusca.style.display = 'none';
         areaResultado.style.display = 'block';
 
@@ -126,14 +127,14 @@ async function buscarCliente() {
     }
 }
 
-// NOVO: Função para popular o bloco de endereço
+/**
+ * Preenche o card de "Dados de Entrega"
+ */
 function preencherDadosEntrega(address) {
-    // Limpa a lista (exceto o header)
     const header = listaEnderecoEl.querySelector('.collection-header');
     listaEnderecoEl.innerHTML = '';
-    listaEnderecoEl.appendChild(header); // Recoloca o header
+    listaEnderecoEl.appendChild(header); 
 
-    // Adiciona os itens
     if (address.endereco) {
         listaEnderecoEl.innerHTML += `<li class="collection-item"><strong>Endereço:</strong> ${address.endereco}</li>`;
     }
@@ -143,7 +144,6 @@ function preencherDadosEntrega(address) {
     if (address.bairro) {
         listaEnderecoEl.innerHTML += `<li class="collection-item"><strong>Bairro:</strong> ${address.bairro}</li>`;
     }
-    // Mostra Cidade/Estado apenas se o ViaCEP encontrou
     if (address.cidade && address.estado) {
         listaEnderecoEl.innerHTML += `<li class="collection-item"><strong>Cidade:</strong> ${address.cidade} (${address.estado})</li>`;
     }
@@ -152,13 +152,15 @@ function preencherDadosEntrega(address) {
     }
 }
 
+/**
+ * Preenche os dados do cliente (nome, telefones, mensagem)
+ */
 function preencherDadosCliente(cliente, mensagemSugerida, codigo) {
     nomeClienteDisplay.innerText = cliente.nome;
     nomeClienteHidden.value = cliente.nome; 
     codigoReceitaHidden.value = codigo;
     mensagemFinalEl.value = mensagemSugerida;
     
-    // Força a atualização dos labels e do textarea
     M.textareaAutoResize(mensagemFinalEl);
     M.updateTextFields(); 
 
@@ -186,16 +188,21 @@ function preencherDadosCliente(cliente, mensagemSugerida, codigo) {
     }
     radioOutro.checked = false;
     inputOutroTelefone.value = '';
+    
     if (primeiroTelefone) { 
          listaTelefonesEl.innerHTML = '<p class="orange-text text-lighten-2">Nenhum telefone encontrado no cadastro.</p>';
          radioOutro.checked = true;
     }
 }
 
+/**
+ * Envia a mensagem para o backend (sem enviar o token).
+ */
 async function enviarMensagem() {
     const codigoReceita = codigoReceitaHidden.value;
     const nomeCliente = nomeClienteHidden.value;
     const mensagem = mensagemFinalEl.value;
+
     let telefoneEscolhido = '';
     if (radioOutro.checked) {
         telefoneEscolhido = inputOutroTelefone.value;
@@ -203,12 +210,15 @@ async function enviarMensagem() {
         const radioSelecionado = document.querySelector('input[name="telefone"]:checked');
         if (radioSelecionado) { telefoneEscolhido = radioSelecionado.value; }
     }
+    
     if (!telefoneEscolhido) { M.toast({html: 'Por favor, selecione ou digite um telefone.'}); return; }
     if (!mensagem) { M.toast({html: 'A mensagem não pode estar vazia.'}); return; }
+
     btnEnviar.classList.add('disabled');
     M.toast({html: 'Enviando...'});
     try {
-        const response = await fetch('http://192.168.254.71/api/enviar', {
+        // MODIFICADO: URL Relativa. Removemos o IP fixo.
+        const response = await fetch('/api/enviar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -216,10 +226,12 @@ async function enviarMensagem() {
                 telefoneEscolhido: telefoneEscolhido,
                 mensagem: mensagem,
                 nomeCliente: nomeCliente
+                // O token NÃO é mais enviado daqui
             })
         });
         const data = await response.json();
         if (!response.ok) { throw new Error(data.mensagem || 'Erro desconhecido no servidor.'); }
+        
         M.toast({html: 'Mensagem enviada com sucesso!', classes: 'green'});
         resetarTela(); 
         
@@ -231,7 +243,7 @@ async function enviarMensagem() {
     }
 }
 
-// Reset completo
+// Reset completo: volta para a tela de busca
 function resetarTela() {
     areaBusca.style.display = 'block';
     loaderBusca.style.display = 'none';
@@ -250,18 +262,20 @@ function resetarTelaParcialmente() {
     mensagemFinalEl.disabled = false;
     avisoJaEnviadoEl.style.display = 'none';
     
-    // Reseta a área de entrega
     areaEntrega.style.display = 'none';
     const header = listaEnderecoEl.querySelector('.collection-header');
     listaEnderecoEl.innerHTML = '';
     if (header) {
-        listaEnderecoEl.appendChild(header); // Mantém o header
+        listaEnderecoEl.appendChild(header); 
     }
 }
 
 
 // --- Funções (Histórico) ---
 
+/**
+ * Carrega os logs do servidor, com paginação e filtros.
+ */
 async function carregarLogs(limparLista = false) {
     if (isLoadingLogs) return;
     isLoadingLogs = true;
@@ -271,7 +285,8 @@ async function carregarLogs(limparLista = false) {
         listaLogsEl.innerHTML = '';
     }
 
-    let url = `http://192.168.254.71/api/logs?page=${logCurrentPage}`;
+    // MODIFICADO: URL Relativa. Removemos o IP fixo.
+    let url = `/api/logs?page=${logCurrentPage}`;
     if (logDateStart) { url += `&dateStart=${logDateStart}`; }
     if (logDateEnd) { url += `&dateEnd=${logDateEnd}`; }
 
@@ -303,15 +318,21 @@ async function carregarLogs(limparLista = false) {
     }
 }
 
+/**
+ * Cria o elemento HTML (<li>) para um único item de log.
+ */
 function renderizarLogItem(log) {
     const li = document.createElement('li');
     li.className = 'collection-item';
+    
     const dataFormatada = new Date(log.timestamp).toLocaleString('pt-BR', {
         dateStyle: 'short', timeStyle: 'short'
     });
+    
     const statusTag = log.status === 'sucesso' 
         ? '<span class="new badge green" data-badge-caption="">Sucesso</span>'
         : '<span class="new badge red" data-badge-caption="">Erro</span>';
+        
     li.innerHTML = `
         ${statusTag}
         <span class="title">Receita: ${log.codigoReceita} - ${log.nomeCliente}</span>
@@ -322,3 +343,4 @@ function renderizarLogItem(log) {
     `;
     return li;
 }
+
