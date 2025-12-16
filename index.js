@@ -5,7 +5,8 @@ const express = require('express');
 const cors = require('cors');
 const ipWhitelistMiddleware = require('./middleware/ipWhitelist');
 const apiRoutes = require('./routes/api');
-const { connectToMongo, testPgConnection } = require('./config/db');
+// Removido testPgConnection da importação
+const { connectToMongo } = require('./config/db');
 
 const app = express();
 const PORT = process.env.PORT || 80; // Usa a porta do .env ou 80
@@ -27,10 +28,9 @@ async function startServer() {
         // 1. Testa Conexão MongoDB
         await connectToMongo();
 
-        // 2. Testa Conexão PostgreSQL
-        await testPgConnection();
+        // (Passo do PostgreSQL removido)
 
-        // 3. Inicia o servidor Express
+        // 2. Inicia o servidor Express
         app.listen(PORT, () => {
             console.log(`Servidor rodando em http://localhost:${PORT}`);
             console.log("Pool de conexão Firebird pronto.");
