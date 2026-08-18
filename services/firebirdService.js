@@ -46,7 +46,8 @@ function queryFb(sql, params, timeoutMs = config.firebird.timeoutMs) {
 // Busca os dados principais da receita e cliente
 async function getRecipeData(codigoReceita) {
     const sql = `
-        SELECT T2.NOME, T3.FONERES, T3.FONECEL, T3.FONECOM, T3.FONEREC
+        SELECT CAST(T2.NOME AS VARCHAR(120) CHARACTER SET WIN1252) AS NOME,
+               T3.FONERES, T3.FONECEL, T3.FONECOM, T3.FONEREC
         FROM RECCLIENTE T1
         INNER JOIN PESSOAS T2 ON T1.CODIGOPES = T2.CODIGOPES
         LEFT JOIN PESSOASFONE T3 ON T2.CODIGOPES = T3.CODIGOPES
@@ -85,8 +86,12 @@ async function getDeliveryData(codigoReceita) {
     }
 
     const sqlEndereco = `
-        SELECT RO.ENDERECO, RO.NUMERO, RO.BAIRRO, RO.CEP, RO.CODIGOCID,
-               C.NOMECID, C.UFCID
+        SELECT CAST(RO.ENDERECO AS VARCHAR(120) CHARACTER SET WIN1252) AS ENDERECO,
+               RO.NUMERO,
+               CAST(RO.BAIRRO AS VARCHAR(120) CHARACTER SET WIN1252) AS BAIRRO,
+               RO.CEP, RO.CODIGOCID,
+               CAST(C.NOMECID AS VARCHAR(120) CHARACTER SET WIN1252) AS NOMECID,
+               C.UFCID
         FROM ROMANEIO RO
         LEFT JOIN CIDADES C ON C.CODIGOCID = RO.CODIGOCID
         WHERE RO.CODIGOR = ?
@@ -154,7 +159,7 @@ async function getReceitasConferidas(dataISO) {
                            AND S.CODIGOCST = ${CODIGO_STATUS_CONFERIDO}
                            AND S.DATA <= CURRENT_DATE
                        ) THEN 1 ELSE 0 END) AS CONFERIDAS,
-                   MAX(P.NOME) AS NOME,
+                   MAX(CAST(P.NOME AS VARCHAR(120) CHARACTER SET WIN1252)) AS NOME,
                    MAX((SELECT MAX(S3.HOTA) FROM STATUSRECEITA S3
                         WHERE S3.CODIGORF = F.CODIGORF
                           AND S3.CODIGOCST = ${CODIGO_STATUS_CONFERIDO}
