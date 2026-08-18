@@ -65,34 +65,43 @@ async function getRecipeData(codigoReceita) {
     };
 }
 
-// Checa se é entrega e busca o endereço
+// Checa se é entrega e busca o endereço.
+// A cidade vem de CIDADES via ROMANEIO.CODIGOCID (decisão D1) — o ViaCEP
+// saiu de cena: fornecia só cidade/UF e falhava em silêncio.
 async function getDeliveryData(codigoReceita) {
-    // 1. Checa se é entrega
     const sqlCheck = `SELECT T1.CODIGOR FROM RECROMANEIO T1 WHERE T1.CODIGOREC = ?`;
     const entregaResult = await queryFb(sqlCheck, [codigoReceita]);
-    const codigor = (entregaResult && entregaResult.length > 0) ? decodeFBString(entregaResult[0].CODIGOR) : null;
+    const codigor = (entregaResult && entregaResult.length > 0)
+        ? decodeFBString(entregaResult[0].CODIGOR)
+        : null;
 
     if (!codigor) {
         return { isDelivery: false, deliveryAddress: null, codigor: null };
     }
 
-    // 2. Se for, busca o endereço
-    const sqlEndereco = `SELECT T1.ENDERECO, T1.NUMERO, T1.BAIRRO, T1.CEP FROM ROMANEIO T1 WHERE T1.CODIGOR = ?`;
+    const sqlEndereco = `
+        SELECT RO.ENDERECO, RO.NUMERO, RO.BAIRRO, RO.CEP, RO.CODIGOCID,
+               C.NOMECID, C.UFCID
+        FROM ROMANEIO RO
+        LEFT JOIN CIDADES C ON C.CODIGOCID = RO.CODIGOCID
+        WHERE RO.CODIGOR = ?
+    `;
     const enderecoResult = await queryFb(sqlEndereco, [codigor]);
-    
+
     let deliveryAddress = null;
     if (enderecoResult && enderecoResult.length > 0) {
-        const dbAddr = enderecoResult[0];
+        const linha = enderecoResult[0];
         deliveryAddress = {
-            endereco: decodeFBString(dbAddr.ENDERECO),
-            numero: decodeFBString(dbAddr.NUMERO),
-            bairro: decodeFBString(dbAddr.BAIRRO),
-            cep: decodeFBString(dbAddr.CEP),
-            cidade: null,
-            estado: null
+            endereco: decodeFBString(linha.ENDERECO),
+            numero: decodeFBString(linha.NUMERO),
+            bairro: decodeFBString(linha.BAIRRO),
+            cep: decodeFBString(linha.CEP),
+            codigoCid: linha.CODIGOCID === null ? null : Number(linha.CODIGOCID),
+            cidade: toTitleCase(decodeFBString(linha.NOMECID)),
+            estado: decodeFBString(linha.UFCID),
         };
     }
-    
+
     return { isDelivery: true, deliveryAddress, codigor };
 }
 
