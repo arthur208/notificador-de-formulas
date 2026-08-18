@@ -17,6 +17,8 @@ app.set('trust proxy', 1); // Confia no proxy (para o req.ip funcionar)
 app.use(ipWhitelistMiddleware); // 1º: Filtro de IP
 app.use(cors()); // 2º: Libera CORS
 app.use(express.json()); // 3º: Habilita o body-parser de JSON
+app.use(require('./middleware/autenticacao').carregarUsuario);
+app.use('/auth', require('./routes/auth'));
 app.use(express.static('public')); // 4º: Serve os arquivos estáticos (index.html, app.js)
 
 // --- Rotas da API ---
@@ -32,6 +34,8 @@ async function startServer() {
 
         // 1. Testa Conexão MongoDB
         await connectToMongo();
+        await require('./services/usuarioService').garantirIndices();
+        await require('./services/sessaoService').garantirIndices();
 
         // (Passo do PostgreSQL removido)
 
