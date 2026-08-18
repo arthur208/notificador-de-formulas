@@ -212,10 +212,48 @@ async function cidadesComEntregaRecente(meses = 12) {
     }));
 }
 
+// Os convênios vivem em TABELASIMPLES com TIPO='CONVENIO' — a tabela
+// CONVENIOS existe mas está vazia. São 97 ativos, misturando local de
+// retirada, categoria de desconto e pessoa física; a curadoria de quais
+// são destino real é feita pelo cadastro.
+async function listarConvenios() {
+    const sql = `
+        SELECT CODIGOTS, CAST(NOME AS VARCHAR(120) CHARACTER SET WIN1252) AS NOME
+        FROM TABELASIMPLES
+        WHERE TIPO = 'CONVENIO' AND STATUS = 'A'
+        ORDER BY NOME
+    `;
+    const linhas = await queryFb(sql, []);
+    return linhas.map((l) => ({
+        codigoTs: Number(l.CODIGOTS),
+        nome: decodeFBString(l.NOME),
+    }));
+}
+
+// O vínculo é do CLIENTE, não da receita: quem é conveniado carrega o
+// vínculo em todas as suas receitas. Serve como sugestão, nunca como decisão.
+async function conveniosDoCliente(codigoReceita) {
+    const sql = `
+        SELECT DISTINCT TS.CODIGOTS,
+               CAST(TS.NOME AS VARCHAR(120) CHARACTER SET WIN1252) AS NOME
+        FROM RECCLIENTE RC
+        JOIN PESSOACONVENIO PC ON PC.CODIGOPES = RC.CODIGOPES
+        JOIN TABELASIMPLES TS ON TS.CODIGOTS = PC.CODIGOCONVENIO AND TS.TIPO = 'CONVENIO'
+        WHERE RC.CODIGOREC = ?
+    `;
+    const linhas = await queryFb(sql, [codigoReceita]);
+    return linhas.map((l) => ({
+        codigoTs: Number(l.CODIGOTS),
+        nome: decodeFBString(l.NOME),
+    }));
+}
+
 module.exports = {
     getRecipeData,
     getDeliveryData,
     getReceitasConferidas,
     contarFormulas,
     cidadesComEntregaRecente,
+    listarConvenios,
+    conveniosDoCliente,
 };

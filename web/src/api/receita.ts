@@ -8,6 +8,7 @@ export type DetalheReceita = {
     jaEnviado: boolean;
     isDelivery: boolean;
     deliveryAddress: { cidade?: string; estado?: string } | null;
+    conveniosSugeridos: { codigoTs: number; nome: string; nomeExibicao: string }[];
 };
 
 export function buscarReceita(codigo: number | string): Promise<DetalheReceita> {
@@ -19,6 +20,7 @@ export async function enviarAviso(dados: {
     telefoneEscolhido: string;
     mensagem: string;
     nomeCliente: string;
+    convenioTs?: number;
 }): Promise<void> {
     const resposta = await fetch('/api/enviar', {
         method: 'POST',

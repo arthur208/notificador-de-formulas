@@ -38,6 +38,7 @@ async function startServer() {
         await require('./services/usuarioService').garantirIndices();
         await require('./services/sessaoService').garantirIndices();
         await require('./services/cidadeService').garantirIndices();
+        await require('./services/convenioService').garantirIndices();
 
         // (Passo do PostgreSQL removido)
 

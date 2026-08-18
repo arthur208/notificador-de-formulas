@@ -19,6 +19,7 @@ const texto = ref('');
 const carregando = ref(true);
 const enviando = ref(false);
 const erro = ref<string | null>(null);
+const convenioEscolhido = ref<number | null>(null);
 
 const modalidade = computed(() => {
     if (!detalhe.value) return '';
@@ -34,6 +35,11 @@ onMounted(async () => {
         telefones.value = listarTelefones(dados.dadosCliente.telefones);
         escolhido.value = telefones.value[0]?.numero ?? null;
         texto.value = dados.mensagemSugerida;
+        // Sugere marcado quando há exatamente um. Com dois, a tela pergunta:
+        // 17 clientes têm dois convênios e não cabe ao sistema escolher.
+        if (dados.conveniosSugeridos?.length === 1) {
+            convenioEscolhido.value = dados.conveniosSugeridos[0].codigoTs;
+        }
     } catch (e) {
         erro.value = e instanceof Error ? e.message : 'Receita não encontrada.';
     } finally {
@@ -50,6 +56,7 @@ async function enviar() {
             telefoneEscolhido: escolhido.value,
             mensagem: texto.value,
             nomeCliente: detalhe.value.dadosCliente.nome,
+            convenioTs: convenioEscolhido.value ?? undefined,
         });
         toast.add({ severity: 'success', summary: 'Aviso enviado', life: 3000 });
         router.push({ name: 'hoje' });
@@ -85,6 +92,21 @@ async function enviar() {
         <template v-else-if="detalhe">
             <h1>{{ detalhe.dadosCliente.nome }}</h1>
             <p class="modalidade">{{ modalidade }}</p>
+
+            <div v-if="detalhe.conveniosSugeridos?.length" class="convenios">
+                <p class="rotulo-convenio">Retirada em convênio</p>
+                <button
+                    v-for="c in detalhe.conveniosSugeridos"
+                    :key="c.codigoTs"
+                    type="button"
+                    class="chip-convenio"
+                    :class="{ ativo: convenioEscolhido === c.codigoTs }"
+                    @click="convenioEscolhido = convenioEscolhido === c.codigoTs ? null : c.codigoTs"
+                >{{ c.nomeExibicao }}</button>
+                <p class="dica-convenio">
+                    Toque para desmarcar se o cliente vier buscar na farmácia.
+                </p>
+            </div>
 
             <p v-if="detalhe.jaEnviado" class="ja-avisado">
                 Esta receita já foi avisada. Enviar de novo repete a mensagem para o cliente.
@@ -147,6 +169,18 @@ h2 {
 .telefone.ativo { border-color: var(--cor-marca); border-width: 2px; }
 .rotulo { color: var(--cor-texto-suave); font-size: 0.8rem; }
 .mensagem { width: 100%; }
+.convenios { margin: 16px 0; }
+.rotulo-convenio {
+    margin: 0 0 8px; font-size: 0.78rem; text-transform: uppercase;
+    letter-spacing: 0.07em; color: var(--cor-texto-suave);
+}
+.chip-convenio {
+    padding: 8px 14px; margin: 0 6px 6px 0; font: inherit;
+    background: var(--cor-superficie); border: 1px solid var(--cor-borda);
+    border-radius: 20px; cursor: pointer; color: inherit;
+}
+.chip-convenio.ativo { border-color: var(--cor-marca); border-width: 2px; color: var(--cor-marca); }
+.dica-convenio { margin: 4px 0 0; font-size: 0.78rem; color: var(--cor-texto-suave); }
 .rodape {
     position: fixed; left: 0; right: 0; bottom: 0;
     padding: 12px 16px calc(12px + env(safe-area-inset-bottom));

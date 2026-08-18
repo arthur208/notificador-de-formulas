@@ -6,35 +6,52 @@ const { formatPhoneNumber, getSaudacao, toTitleCase } = require('../utils/helper
 const { renderizar, VariavelAusenteError } = require('../utils/template');
 const { montarEndereco } = require('../utils/endereco');
 const cidadeService = require('../services/cidadeService');
+const convenioService = require('../services/convenioService');
 
 // Monta a mensagem no MOMENTO DO ENVIO. Antes ela era montada na busca,
 // então quem buscasse 11h58 e enviasse 12h05 mandava "Bom dia" no almoço.
-async function montarMensagem(codigoReceita, nomeCliente) {
-    const { isDelivery, deliveryAddress } = await firebirdService.getDeliveryData(codigoReceita);
-    const modalidade = isDelivery ? 'entrega' : 'retirada';
-
-    // Loanda tem texto próprio (decisão D11). O mecanismo é override por
-    // cidade: hoje só ela usa, mas qualquer cidade pode ganhar o seu.
-    const prazo = isDelivery ? await cidadeService.resolverPrazo(deliveryAddress?.codigoCid) : null;
-    const template = await templateService.carregarTemplate(prazo?.templateId || modalidade);
-
-    const valores = {
+// Precedência (decisão D3): convênio sobrepõe cidade e a flag
+// entrega/retirada. Justificativa do cliente: "se a pessoa é de Porto Rico
+// e temos entrega em Porto Rico, mas ela pediu no convênio, entregamos
+// no convênio".
+async function montarMensagem(codigoReceita, nomeCliente, convenioTs) {
+    const comuns = {
         saudacao: getSaudacao(),
         nome: toTitleCase(nomeCliente),
         codigo: codigoReceita,
         qtdFormulas: await firebirdService.contarFormulas(codigoReceita),
-        endereco: montarEndereco(deliveryAddress) || undefined,
-        cidade: deliveryAddress?.cidade || undefined,
-        // Cidade não cadastrada deixa {{dias}} ausente de propósito:
-        // o template que promete prazo falha e avisa, em vez de inventar.
-        dias: prazo?.dias,
     };
 
-    return { texto: renderizar(template.corpo, valores), modalidade };
+    if (convenioTs) {
+        const config = await convenioService.buscarConfiguracao(convenioTs);
+        if (!config) {
+            throw new Error('Este convênio não está configurado. Cadastre em Configurações.');
+        }
+        const template = await templateService.carregarTemplate(config.templateId || 'convenio');
+        return {
+            texto: renderizar(template.corpo, { ...comuns, ...convenioService.variaveisDoConvenio(config) }),
+            modalidade: 'convenio',
+        };
+    }
+
+    const { isDelivery, deliveryAddress } = await firebirdService.getDeliveryData(codigoReceita);
+    const modalidade = isDelivery ? 'entrega' : 'retirada';
+    const prazo = isDelivery ? await cidadeService.resolverPrazo(deliveryAddress?.codigoCid) : null;
+    const template = await templateService.carregarTemplate(prazo?.templateId || modalidade);
+
+    return {
+        texto: renderizar(template.corpo, {
+            ...comuns,
+            endereco: montarEndereco(deliveryAddress) || undefined,
+            cidade: deliveryAddress?.cidade || undefined,
+            dias: prazo?.dias,
+        }),
+        modalidade,
+    };
 }
 
 async function sendMessage(req, res) {
-    const { codigoReceita, telefoneEscolhido, mensagem, nomeCliente } = req.body;
+    const { codigoReceita, telefoneEscolhido, mensagem, nomeCliente, convenioTs } = req.body;
 
     const numeroFormatado = formatPhoneNumber(telefoneEscolhido);
     if (!numeroFormatado) {
@@ -48,7 +65,7 @@ async function sendMessage(req, res) {
     try {
         // Texto editado pela atendente vence o template. Sem edição, monta agora.
         if (!textoFinal || textoFinal.trim() === '') {
-            ({ texto: textoFinal } = await montarMensagem(codigoReceita, nomeCliente));
+            ({ texto: textoFinal } = await montarMensagem(codigoReceita, nomeCliente, convenioTs));
         }
     } catch (erro) {
         if (erro instanceof VariavelAusenteError) {

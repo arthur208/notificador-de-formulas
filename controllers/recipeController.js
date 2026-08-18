@@ -2,6 +2,7 @@ const firebirdService = require('../services/firebirdService');
 const mongoService = require('../services/mongoService');
 const { getSaudacao } = require('../utils/helpers');
 const { montarEndereco } = require('../utils/endereco');
+const convenioService = require('../services/convenioService');
 
 async function getCliente(req, res) {
     const codigoReceita = req.params.codigo;
@@ -15,6 +16,21 @@ async function getCliente(req, res) {
         }
 
         const { isDelivery, deliveryAddress } = await firebirdService.getDeliveryData(codigoReceita);
+
+        // O ERP diz quais convênios o CLIENTE tem. Só entram como sugestão
+        // os que têm configuração — a existência da config é a allowlist.
+        const vinculos = await firebirdService.conveniosDoCliente(codigoReceita);
+        const conveniosSugeridos = [];
+        for (const vinculo of vinculos) {
+            const config = await convenioService.buscarConfiguracao(vinculo.codigoTs);
+            if (config) {
+                conveniosSugeridos.push({
+                    codigoTs: vinculo.codigoTs,
+                    nome: vinculo.nome,
+                    nomeExibicao: config.nomeExibicao,
+                });
+            }
+        }
 
         const saudacao = getSaudacao();
         let mensagemSugerida;
@@ -40,6 +56,7 @@ async function getCliente(req, res) {
             jaEnviado: logSucessoExistente !== null,
             isDelivery,
             deliveryAddress,
+            conveniosSugeridos,
         });
     } catch (erro) {
         console.error('Erro na rota /cliente:', erro);

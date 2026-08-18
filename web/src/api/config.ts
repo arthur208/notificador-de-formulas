@@ -41,3 +41,24 @@ export const salvarCidade = (codigoCid: number, dados: Partial<Cidade>) =>
 
 export const removerCidade = (codigoCid: number) =>
     enviar('DELETE', `/api/config/cidades/${codigoCid}`);
+
+export type ConvenioErp = {
+    codigoTs: number;
+    nome: string;
+    config: {
+        nomeExibicao: string;
+        dias: number;
+        variaveis: { chave: string; valor: string }[];
+        ativo: boolean;
+    } | null;
+};
+
+export function lerConvenios(): Promise<{ convenios: ConvenioErp[] }> {
+    return buscarJson('/api/config/convenios');
+}
+
+export const salvarConvenio = (codigoTs: number, dados: unknown) =>
+    enviar('PUT', `/api/config/convenios/${codigoTs}`, dados);
+
+export const removerConvenio = (codigoTs: number) =>
+    enviar('DELETE', `/api/config/convenios/${codigoTs}`);

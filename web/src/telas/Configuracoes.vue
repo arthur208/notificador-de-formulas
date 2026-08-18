@@ -3,12 +3,13 @@ import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import EditorTemplate from '@/componentes/EditorTemplate.vue';
 import GradeCidades from '@/componentes/GradeCidades.vue';
+import GradeConvenios from '@/componentes/GradeConvenios.vue';
 import { lerTemplates, type Template, type Variaveis, type Modalidade } from '@/api/config';
 import { podeGerir, ehAdmin, usuarioAtual } from '@/estado/sessao';
 
 const router = useRouter();
 
-const secao = ref<'templates' | 'cidades' | 'conexao'>('templates');
+const secao = ref<'templates' | 'cidades' | 'convenios' | 'conexao'>('templates');
 const templates = ref<Template[]>([]);
 const variaveis = ref<Variaveis | null>(null);
 const modalidadeAtiva = ref<Modalidade>('retirada');
@@ -56,6 +57,7 @@ onMounted(async () => {
             <nav class="abas">
                 <button type="button" :class="{ ativa: secao === 'templates' }" @click="secao = 'templates'">Mensagens</button>
                 <button type="button" :class="{ ativa: secao === 'cidades' }" @click="secao = 'cidades'">Cidades e prazos</button>
+                <button type="button" :class="{ ativa: secao === 'convenios' }" @click="secao = 'convenios'">Convênios</button>
                 <button v-if="ehAdmin()" type="button" :class="{ ativa: secao === 'conexao' }" @click="secao = 'conexao'">Conexão</button>
             </nav>
 
@@ -79,6 +81,10 @@ onMounted(async () => {
 
             <section v-else-if="secao === 'cidades'">
                 <GradeCidades />
+            </section>
+
+            <section v-else-if="secao === 'convenios'">
+                <GradeConvenios />
             </section>
 
             <section v-else>
