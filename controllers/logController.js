@@ -1,40 +1,30 @@
 const mongoService = require('../services/mongoService');
 
+const POR_PAGINA = 25;
+
 async function getLogs(req, res) {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = 25;
-        const dataInicio = req.query.dateStart;
-        const dataFim = req.query.dateEnd;
-        
-        const query = {};
-        
-        if (dataInicio || dataFim) {
+        const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        const { dateStart, dateEnd, busca } = req.query;
+
+        const query = { ...mongoService.montarFiltroBusca(busca) };
+
+        if (dateStart || dateEnd) {
             query.timestamp = {};
-            if (dataInicio) {
-                query.timestamp.$gte = new Date(dataInicio + 'T00:00:00.000-03:00'); 
-            }
-            if (dataFim) {
-                query.timestamp.$lte = new Date(dataFim + 'T23:59:59.999-03:00');
-            }
+            if (dateStart) query.timestamp.$gte = new Date(`${dateStart}T00:00:00.000-03:00`);
+            if (dateEnd) query.timestamp.$lte = new Date(`${dateEnd}T23:59:59.999-03:00`);
         }
 
-        // Executa as consultas em paralelo
-        const [logs, totalLogs] = await Promise.all([
-            mongoService.findLogs(query, page, limit),
-            mongoService.countLogs(query)
+        const [logs, total] = await Promise.all([
+            mongoService.findLogsAgrupados(query, page, POR_PAGINA),
+            mongoService.contarAgrupados(query),
         ]);
-        
-        const hasMore = (page * limit) < totalLogs;
 
-        res.json({ logs: logs, hasMore: hasMore });
-
-    } catch (err) {
-        console.error("Erro ao buscar logs:", err);
-        res.status(500).json({ erro: "Falha ao consultar histórico." });
+        res.json({ logs, hasMore: page * POR_PAGINA < total, total });
+    } catch (erro) {
+        console.error('Erro ao buscar logs:', erro);
+        res.status(500).json({ erro: 'Falha ao consultar o histórico.' });
     }
 }
 
-module.exports = {
-    getLogs
-};
+module.exports = { getLogs };

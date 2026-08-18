@@ -82,10 +82,61 @@ async function buscarAvisados(codigos) {
     }
 }
 
+function escaparRegex(texto) {
+    return texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Busca por nome do cliente ou número da receita. Faz no servidor:
+// filtrar 8.500 documentos no navegador seria absurdo.
+function montarFiltroBusca(texto) {
+    const termo = String(texto || '').trim();
+    if (termo === '') return {};
+
+    const alternativas = [{ nomeCliente: { $regex: escaparRegex(termo), $options: 'i' } }];
+    const comoNumero = Number(termo.replace(/\D/g, ''));
+    if (Number.isInteger(comoNumero) && comoNumero > 0) {
+        alternativas.push({ codigoReceita: comoNumero });
+    }
+    return { $or: alternativas };
+}
+
+const CHAVE_AGRUPAMENTO = {
+    codigoReceita: '$codigoReceita',
+    telefoneEnviado: '$telefoneEnviado',
+    status: '$status',
+    minuto: { $dateToString: { format: '%Y-%m-%dT%H:%M', date: '$timestamp' } },
+};
+
+// Agrupa por (receita, telefone, status) dentro do mesmo minuto: quatro
+// tentativas seguidas de erro viram uma entrada com tentativas: 4.
+async function findLogsAgrupados(query, page, limit) {
+    return getLogsCollection().aggregate([
+        { $match: query },
+        { $sort: { timestamp: -1 } },
+        { $group: { _id: CHAVE_AGRUPAMENTO, doc: { $first: '$$ROOT' }, tentativas: { $sum: 1 } } },
+        { $replaceRoot: { newRoot: { $mergeObjects: ['$doc', { tentativas: '$tentativas' }] } } },
+        { $sort: { timestamp: -1 } },
+        { $skip: (page - 1) * limit },
+        { $limit: limit },
+    ]).toArray();
+}
+
+async function contarAgrupados(query) {
+    const resultado = await getLogsCollection().aggregate([
+        { $match: query },
+        { $group: { _id: CHAVE_AGRUPAMENTO } },
+        { $count: 'total' },
+    ]).toArray();
+    return resultado[0]?.total ?? 0;
+}
+
 module.exports = {
     logToMongo,
     findLogs,
     countLogs,
     checkExistingLog,
     buscarAvisados,
+    findLogsAgrupados,
+    contarAgrupados,
+    montarFiltroBusca,
 };

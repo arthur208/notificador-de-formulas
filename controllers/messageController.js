@@ -50,6 +50,22 @@ async function montarMensagem(codigoReceita, nomeCliente, convenioTs) {
     };
 }
 
+// Os botões saem da configuração do canal, com as mesmas variáveis do
+// template. Só existem como formato visual: o clique do cliente vira
+// ticket no MultiAtendWeb e é tratado por pessoa (decisão D8).
+function montarBotoes(definicoes, valores) {
+    if (!Array.isArray(definicoes) || definicoes.length === 0) return null;
+
+    return definicoes.slice(0, 3).map((definicao) => {
+        const botao = { title: renderizar(definicao.title, valores), type: definicao.type };
+        if (definicao.type === 'reply') botao.id = definicao.id;
+        if (definicao.type === 'cta_url') botao.url = renderizar(definicao.url, valores);
+        if (definicao.type === 'cta_call') botao.phone_number = definicao.phone_number;
+        if (definicao.type === 'cta_copy') botao.copy_code = renderizar(definicao.copy_code, valores);
+        return botao;
+    });
+}
+
 async function sendMessage(req, res) {
     const { codigoReceita, telefoneEscolhido, mensagem, nomeCliente, convenioTs } = req.body;
 
@@ -79,7 +95,21 @@ async function sendMessage(req, res) {
     }
 
     try {
-        await whatsmeowService.enviarTexto({ numero: numeroFormatado, mensagem: textoFinal });
+        const canal = await require('../services/canalConfigService').carregarCanal();
+        const botoes = canal?.botoesAtivos
+            ? montarBotoes(canal.botoes, { codigo: codigoReceita, nome: nomeCliente })
+            : null;
+
+        if (botoes && botoes.length > 0) {
+            await whatsmeowService.enviarBotoes({
+                numero: numeroFormatado,
+                titulo: 'Farmácia Bioessência',
+                corpo: textoFinal,
+                botoes,
+            });
+        } else {
+            await whatsmeowService.enviarTexto({ numero: numeroFormatado, mensagem: textoFinal });
+        }
 
         await mongoService.logToMongo({
             codigoReceita: Number(codigoReceita),
