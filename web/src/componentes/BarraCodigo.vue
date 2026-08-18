@@ -31,52 +31,56 @@ function receberDaCamera(texto: string) {
 
 <template>
     <div class="barra">
-        <input
-            ref="campo"
-            v-model="valor"
-            class="campo dados"
-            type="text"
-            inputmode="numeric"
-            autocomplete="off"
-            placeholder="Digitar ou bipar a receita"
-            aria-label="Código da receita"
-            @keydown.enter.prevent="confirmar"
-        >
-        <button
-            v-if="temCamera"
-            type="button"
-            class="camera"
-            aria-label="Ler código de barras"
-            @click="camera = true"
-        >▣</button>
+        <!-- Raiz única de propósito: com mais de um nó raiz — inclusive um
+             comentário solto — o Vue não repassa a classe recebida de fora,
+             e o flex do container não chega aqui. -->
+        <div class="campo-grupo">
+            <input
+                ref="campo"
+                v-model="valor"
+                class="campo dados"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                placeholder="Digitar ou bipar a receita"
+                aria-label="Código da receita"
+                @keydown.enter.prevent="confirmar"
+            >
+            <button
+                v-if="temCamera"
+                type="button"
+                class="camera"
+                aria-label="Ler código de barras"
+                @click="camera = true"
+            >▣</button>
+        </div>
         <button type="button" class="acao" @click="confirmar">Abrir</button>
-    </div>
 
-    <LeitorCamera v-if="camera" @lido="receberDaCamera" @fechar="camera = false" />
+        <LeitorCamera v-if="camera" @lido="receberDaCamera" @fechar="camera = false" />
+    </div>
 </template>
 
 <style scoped>
-.barra {
-    position: fixed;
-    left: 0; right: 0; bottom: 0;
-    display: flex; gap: 8px;
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+.barra { display: flex; gap: 8px; align-items: stretch; }
+.campo-grupo {
+    flex: 1; min-width: 0; display: flex; align-items: center;
     background: var(--cor-superficie);
-    border-top: 1px solid var(--cor-borda);
+    border: 1px solid var(--cor-borda); border-radius: var(--raio);
 }
+.campo-grupo:focus-within { border-color: var(--cor-marca); }
 .campo {
     flex: 1; min-width: 0;
-    padding: 14px 12px; font-size: 1rem;
-    border: 1px solid var(--cor-borda); border-radius: var(--raio);
-    background: var(--cor-fundo); color: var(--cor-texto);
+    padding: 13px 14px; font-size: 1rem;
+    border: 0; background: none; color: var(--cor-texto);
 }
+.campo:focus { outline: none; }
 .camera {
-    padding: 14px 16px; font-size: 1.1rem;
-    background: transparent; border: 1px solid var(--cor-borda);
-    border-radius: var(--raio); color: var(--cor-marca); cursor: pointer;
+    padding: 10px 14px; margin-right: 4px; font-size: 1.1rem;
+    background: none; border: 0; border-radius: 8px;
+    color: var(--cor-marca); cursor: pointer;
 }
 .acao {
-    padding: 14px 20px; font: inherit; font-weight: 600;
+    padding: 13px 22px; font: inherit; font-weight: 600; white-space: nowrap;
     background: var(--cor-marca); color: #fff;
     border: 0; border-radius: var(--raio);
 }

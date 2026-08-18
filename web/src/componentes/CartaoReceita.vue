@@ -28,7 +28,6 @@ function acionar() {
                 {{ receita.total - receita.conferidas }}
             </template>
         </p>
-        <span v-if="receita.jaAvisado" class="selo">avisado</span>
     </component>
 </template>
 
@@ -41,7 +40,6 @@ function acionar() {
     border: 1px solid var(--cor-borda);
     border-radius: var(--raio);
     padding: 12px 14px;
-    margin-bottom: 10px;
     font: inherit; color: inherit;
     cursor: pointer;
 }
@@ -55,9 +53,4 @@ function acionar() {
 }
 .nome { margin: 8px 0 2px; font-weight: 600; font-size: 1rem; }
 .meta { margin: 0; font-size: 0.8rem; color: var(--cor-texto-suave); }
-.selo {
-    position: absolute; top: 12px; right: 14px;
-    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em;
-    color: var(--cor-completo);
-}
 </style>

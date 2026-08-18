@@ -25,7 +25,8 @@ body {
     -webkit-text-size-adjust: 100%;
 }
 
-/* Espaço para a barra fixa do rodapé, respeitando a área segura do iPhone. */
+/* Usado pela tela de receita, que mantém o botão de enviar fixo no rodapé —
+   ali é ação única e principal, e a zona do polegar vale. */
 .com-rodape-fixo {
     padding-bottom: calc(96px + env(safe-area-inset-bottom));
 }
