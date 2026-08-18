@@ -176,8 +176,17 @@ async function getReceitasConferidas(dataISO) {
     return conferidas;
 }
 
+async function contarFormulas(codigoReceita) {
+    const linhas = await queryFb(
+        'SELECT COUNT(*) AS TOTAL FROM RECFORMULAS WHERE CODIGOREC = ?',
+        [codigoReceita]
+    );
+    return Number(linhas?.[0]?.TOTAL ?? 0);
+}
+
 module.exports = {
     getRecipeData,
     getDeliveryData,
     getReceitasConferidas,
+    contarFormulas,
 };
