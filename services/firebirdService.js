@@ -184,9 +184,38 @@ async function contarFormulas(codigoReceita) {
     return Number(linhas?.[0]?.TOTAL ?? 0);
 }
 
+// Cidades que apareceram em entregas recentes. Alimenta o aviso da tela
+// sobre cidades ainda não cadastradas — o buraco precisa ser visível.
+async function cidadesComEntregaRecente(meses = 12) {
+    // O intervalo entra como literal, não como parâmetro: em CURRENT_DATE - ?
+    // o Firebird infere o tipo errado e falha com "Conversion error from
+    // string". O valor é inteiro nosso, validado logo abaixo.
+    const dias = Number(meses) * 30;
+    if (!Number.isInteger(dias) || dias < 1) throw new Error(`Intervalo inválido: ${meses}`);
+    const sql = `
+        SELECT C.CODIGOCID,
+               MAX(CAST(C.NOMECID AS VARCHAR(120) CHARACTER SET WIN1252)) AS NOME,
+               MAX(C.UFCID) AS UF,
+               COUNT(*) AS ENTREGAS
+        FROM ROMANEIO RO
+        JOIN CIDADES C ON C.CODIGOCID = RO.CODIGOCID
+        WHERE RO.DATAENTREGA >= CURRENT_DATE - ${dias} AND RO.DATAENTREGA <= CURRENT_DATE
+        GROUP BY C.CODIGOCID
+        ORDER BY 4 DESC
+    `;
+    const linhas = await queryFb(sql, []);
+    return linhas.map((l) => ({
+        codigoCid: Number(l.CODIGOCID),
+        nome: toTitleCase(decodeFBString(l.NOME)),
+        uf: decodeFBString(l.UF),
+        entregas: Number(l.ENTREGAS),
+    }));
+}
+
 module.exports = {
     getRecipeData,
     getDeliveryData,
     getReceitasConferidas,
     contarFormulas,
+    cidadesComEntregaRecente,
 };

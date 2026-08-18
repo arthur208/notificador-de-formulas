@@ -1,4 +1,5 @@
 const { getDb } = require('../config/db');
+const { variaveisUsadas } = require('../utils/template');
 
 const COLECAO = 'templates';
 
@@ -21,7 +22,33 @@ const TEMPLATES_PADRAO = {
             'e será enviada para entrega. 🚚✅\n\n' +
             'Endereço de destino:\n{{endereco}}\n\nFicamos à disposição!',
     },
+    convenio: {
+        titulo: 'Fórmula no convênio',
+        corpo:
+            '{{saudacao}}, {{nome}}! 👋\n\n' +
+            'A Farmácia Bioessência informa: Sua receita (Nº {{codigo}}) foi enviada ' +
+            'e estará disponível para retirada {{local}} em {{dias}} dias úteis. 💊✅\n\n' +
+            'Ficamos à disposição!',
+    },
 };
+
+const VARIAVEIS_GLOBAIS = ['saudacao', 'nome', 'codigo', 'qtdFormulas'];
+
+const VARIAVEIS_POR_MODALIDADE = {
+    retirada: [],
+    entrega: ['endereco', 'cidade', 'dias'],
+    convenio: ['local', 'dias'],
+};
+
+// Devolve as variáveis citadas que a modalidade não oferece.
+// Vazio significa que o template pode ser salvo.
+function validarTemplate(modalidade, corpo, extras = []) {
+    const disponiveis = VARIAVEIS_POR_MODALIDADE[modalidade];
+    if (!disponiveis) throw new Error(`Modalidade desconhecida: ${modalidade}`);
+
+    const permitidas = new Set([...VARIAVEIS_GLOBAIS, ...disponiveis, ...extras]);
+    return variaveisUsadas(corpo).filter((nome) => !permitidas.has(nome));
+}
 
 async function carregarTemplate(modalidade) {
     try {
@@ -35,4 +62,19 @@ async function carregarTemplate(modalidade) {
     return TEMPLATES_PADRAO[modalidade] || null;
 }
 
-module.exports = { carregarTemplate, TEMPLATES_PADRAO };
+async function salvarTemplate(modalidade, { titulo, corpo }) {
+    await getDb().collection(COLECAO).updateOne(
+        { modalidade },
+        { $set: { modalidade, titulo, corpo, atualizadoEm: new Date() }, $inc: { versao: 1 } },
+        { upsert: true }
+    );
+}
+
+async function listarTemplates() {
+    return getDb().collection(COLECAO).find({}).toArray();
+}
+
+module.exports = {
+    carregarTemplate, salvarTemplate, listarTemplates, validarTemplate,
+    TEMPLATES_PADRAO, VARIAVEIS_POR_MODALIDADE, VARIAVEIS_GLOBAIS,
+};

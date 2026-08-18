@@ -5,13 +5,18 @@ const templateService = require('../services/templateService');
 const { formatPhoneNumber, getSaudacao, toTitleCase } = require('../utils/helpers');
 const { renderizar, VariavelAusenteError } = require('../utils/template');
 const { montarEndereco } = require('../utils/endereco');
+const cidadeService = require('../services/cidadeService');
 
 // Monta a mensagem no MOMENTO DO ENVIO. Antes ela era montada na busca,
 // então quem buscasse 11h58 e enviasse 12h05 mandava "Bom dia" no almoço.
 async function montarMensagem(codigoReceita, nomeCliente) {
     const { isDelivery, deliveryAddress } = await firebirdService.getDeliveryData(codigoReceita);
     const modalidade = isDelivery ? 'entrega' : 'retirada';
-    const template = await templateService.carregarTemplate(modalidade);
+
+    // Loanda tem texto próprio (decisão D11). O mecanismo é override por
+    // cidade: hoje só ela usa, mas qualquer cidade pode ganhar o seu.
+    const prazo = isDelivery ? await cidadeService.resolverPrazo(deliveryAddress?.codigoCid) : null;
+    const template = await templateService.carregarTemplate(prazo?.templateId || modalidade);
 
     const valores = {
         saudacao: getSaudacao(),
@@ -19,6 +24,10 @@ async function montarMensagem(codigoReceita, nomeCliente) {
         codigo: codigoReceita,
         qtdFormulas: await firebirdService.contarFormulas(codigoReceita),
         endereco: montarEndereco(deliveryAddress) || undefined,
+        cidade: deliveryAddress?.cidade || undefined,
+        // Cidade não cadastrada deixa {{dias}} ausente de propósito:
+        // o template que promete prazo falha e avisa, em vez de inventar.
+        dias: prazo?.dias,
     };
 
     return { texto: renderizar(template.corpo, valores), modalidade };

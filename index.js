@@ -23,6 +23,7 @@ app.use(express.static('public')); // 4º: Serve os arquivos estáticos (index.h
 
 // --- Rotas da API ---
 // Todas as rotas em /routes/api.js serão prefixadas com /api
+app.use('/api/config', require('./routes/config'));
 app.use('/api', apiRoutes);
 
 // --- Inicialização do Servidor ---
@@ -36,6 +37,7 @@ async function startServer() {
         await connectToMongo();
         await require('./services/usuarioService').garantirIndices();
         await require('./services/sessaoService').garantirIndices();
+        await require('./services/cidadeService').garantirIndices();
 
         // (Passo do PostgreSQL removido)
 
