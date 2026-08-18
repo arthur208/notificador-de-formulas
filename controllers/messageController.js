@@ -28,8 +28,10 @@ async function montarMensagem(codigoReceita, nomeCliente, convenioTs) {
             throw new Error('Este convênio não está configurado. Cadastre em Configurações.');
         }
         const template = await templateService.carregarTemplate(config.templateId || 'convenio');
+        const valores = { ...comuns, ...convenioService.variaveisDoConvenio(config) };
         return {
-            texto: renderizar(template.corpo, { ...comuns, ...convenioService.variaveisDoConvenio(config) }),
+            texto: renderizar(template.corpo, valores),
+            botoes: montarBotoes(template.botoes, valores),
             modalidade: 'convenio',
         };
     }
@@ -39,13 +41,15 @@ async function montarMensagem(codigoReceita, nomeCliente, convenioTs) {
     const prazo = isDelivery ? await cidadeService.resolverPrazo(deliveryAddress?.codigoCid) : null;
     const template = await templateService.carregarTemplate(prazo?.templateId || modalidade);
 
+    const valores = {
+        ...comuns,
+        endereco: montarEndereco(deliveryAddress) || undefined,
+        cidade: deliveryAddress?.cidade || undefined,
+        dias: prazo?.dias,
+    };
     return {
-        texto: renderizar(template.corpo, {
-            ...comuns,
-            endereco: montarEndereco(deliveryAddress) || undefined,
-            cidade: deliveryAddress?.cidade || undefined,
-            dias: prazo?.dias,
-        }),
+        texto: renderizar(template.corpo, valores),
+        botoes: montarBotoes(template.botoes, valores),
         modalidade,
     };
 }
@@ -78,11 +82,13 @@ async function sendMessage(req, res) {
     }
 
     let textoFinal = mensagem;
+    let botoes = null;
     try {
-        // Texto editado pela atendente vence o template. Sem edição, monta agora.
-        if (!textoFinal || textoFinal.trim() === '') {
-            ({ texto: textoFinal } = await montarMensagem(codigoReceita, nomeCliente, convenioTs));
-        }
+        // Sempre monta: mesmo com o texto editado pela atendente, os botões
+        // vêm do template — ela edita a mensagem, não a definição dos botões.
+        const montada = await montarMensagem(codigoReceita, nomeCliente, convenioTs);
+        botoes = montada.botoes;
+        if (!textoFinal || textoFinal.trim() === '') textoFinal = montada.texto;
     } catch (erro) {
         if (erro instanceof VariavelAusenteError) {
             return res.status(422).json({
@@ -95,10 +101,10 @@ async function sendMessage(req, res) {
     }
 
     try {
+        // botoesAtivos no canal é o interruptor geral: permite desligar
+        // botões em todas as modalidades de uma vez, sem apagar as definições.
         const canal = await require('../services/canalConfigService').carregarCanal();
-        const botoes = canal?.botoesAtivos
-            ? montarBotoes(canal.botoes, { codigo: codigoReceita, nome: nomeCliente })
-            : null;
+        if (!canal?.botoesAtivos) botoes = null;
 
         if (botoes && botoes.length > 0) {
             await whatsmeowService.enviarBotoes({

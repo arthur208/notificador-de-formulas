@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { lerCanal, salvarCanal, type Canal, type BotaoDef, TIPOS_BOTAO } from '@/api/config';
+import { lerCanal, salvarCanal, type Canal } from '@/api/config';
 
 const canal = ref<Canal | null>(null);
 const token = ref('');
@@ -8,13 +8,10 @@ const clientId = ref('');
 const clientSecret = ref('');
 const numeroRemetente = ref('');
 const botoesAtivos = ref(false);
-const botoes = ref<BotaoDef[]>([]);
 
 const salvando = ref(false);
 const salvo = ref(false);
 const erro = ref<string | null>(null);
-
-const MAX_BOTOES = 3;
 
 async function recarregar() {
     try {
@@ -22,22 +19,12 @@ async function recarregar() {
         canal.value = dados.canal;
         numeroRemetente.value = dados.canal?.numeroRemetente ?? '';
         botoesAtivos.value = dados.canal?.botoesAtivos ?? false;
-        botoes.value = dados.canal?.botoes ?? [];
     } catch (e) {
         erro.value = e instanceof Error ? e.message : 'Não foi possível carregar.';
     }
 }
 
 onMounted(recarregar);
-
-function acrescentarBotao() {
-    if (botoes.value.length >= MAX_BOTOES) return;
-    botoes.value.push({ type: 'cta_call', title: '', phone_number: '' });
-}
-
-function removerBotao(indice: number) {
-    botoes.value.splice(indice, 1);
-}
 
 async function guardar() {
     salvando.value = true;
@@ -52,7 +39,6 @@ async function guardar() {
             clientSecret: clientSecret.value || undefined,
             numeroRemetente: numeroRemetente.value,
             botoesAtivos: botoesAtivos.value,
-            botoes: botoes.value,
             ativo: true,
         });
         token.value = '';
@@ -104,29 +90,13 @@ async function guardar() {
 
         <h3>Botões na mensagem</h3>
         <p class="explica">
-            No máximo 3. O clique do cliente gera atendimento no MultiAtendWeb —
-            este sistema não lê a resposta.
+            Interruptor geral. Os botões de cada mensagem são definidos em
+            <strong>Mensagens</strong>, junto do texto — cada modalidade tem os seus.
         </p>
 
         <label class="ligar">
             <input v-model="botoesAtivos" type="checkbox"> enviar mensagens com botões
         </label>
-
-        <div v-for="(botao, i) in botoes" :key="i" class="botao">
-            <select v-model="botao.type">
-                <option v-for="t in TIPOS_BOTAO" :key="t.valor" :value="t.valor">{{ t.rotulo }}</option>
-            </select>
-            <input v-model="botao.title" type="text" placeholder="Texto do botão" class="titulo">
-            <input v-if="botao.type === 'cta_call'" v-model="botao.phone_number" type="text" placeholder="5544999999999">
-            <input v-if="botao.type === 'cta_url'" v-model="botao.url" type="url" placeholder="https://...">
-            <input v-if="botao.type === 'cta_copy'" v-model="botao.copy_code" type="text" placeholder="{{codigo}}">
-            <input v-if="botao.type === 'reply'" v-model="botao.id" type="text" placeholder="identificador">
-            <button type="button" class="remover" @click="removerBotao(i)">remover</button>
-        </div>
-
-        <button v-if="botoes.length < MAX_BOTOES" type="button" class="adicionar" @click="acrescentarBotao">
-            + acrescentar botão
-        </button>
 
         <div class="acoes">
             <button type="button" class="salvar" :disabled="salvando" @click="guardar">

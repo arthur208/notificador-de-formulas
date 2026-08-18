@@ -45,7 +45,7 @@ async function lerTemplates(_req, res) {
 
 async function gravarTemplate(req, res) {
     const { modalidade } = req.params;
-    const { titulo, corpo } = req.body || {};
+    const { titulo, corpo, botoes } = req.body || {};
 
     if (!corpo || corpo.trim() === '') {
         return res.status(400).json({ erro: 'O texto da mensagem não pode ficar vazio.' });
@@ -53,7 +53,7 @@ async function gravarTemplate(req, res) {
 
     let invalidas;
     try {
-        invalidas = templateService.validarTemplate(modalidade, corpo);
+        invalidas = templateService.validarTemplate(modalidade, corpo, [], botoes);
     } catch {
         return res.status(400).json({ erro: `Modalidade desconhecida: ${modalidade}.` });
     }
@@ -66,10 +66,10 @@ async function gravarTemplate(req, res) {
     }
 
     const anterior = await templateService.carregarTemplate(modalidade);
-    await templateService.salvarTemplate(modalidade, { titulo, corpo });
+    await templateService.salvarTemplate(modalidade, { titulo, corpo, botoes });
     await auditoria.registrar({
         usuario: req.usuario, acao: 'atualizar', entidade: 'template',
-        entidadeId: modalidade, valorAnterior: anterior, valorNovo: { titulo, corpo },
+        entidadeId: modalidade, valorAnterior: anterior, valorNovo: { titulo, corpo, botoes },
     });
 
     res.json({ ok: true });
