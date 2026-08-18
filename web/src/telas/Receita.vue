@@ -6,6 +6,7 @@ import Textarea from 'primevue/textarea';
 import Skeleton from 'primevue/skeleton';
 import { buscarReceita, enviarAviso, listarTelefones, type DetalheReceita, type Telefone } from '@/api/receita';
 import { formatarTelefone } from '@/formatadores';
+import CabecalhoApp from '@/componentes/CabecalhoApp.vue';
 
 const rota = useRoute();
 const router = useRouter();
@@ -78,6 +79,8 @@ async function enviar() {
         <header class="topo">
             <button type="button" class="voltar" @click="router.back()" aria-label="Voltar">←</button>
             <span class="codigo dados">{{ codigo }}</span>
+            <span class="espaco" />
+            <CabecalhoApp />
         </header>
 
         <div v-if="carregando"><Skeleton height="140px" border-radius="10px" /></div>
@@ -150,6 +153,7 @@ async function enviar() {
 .topo { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .voltar { font-size: 1.4rem; background: none; border: 0; padding: 4px 8px; cursor: pointer; color: inherit; }
 .codigo { color: var(--cor-texto-suave); }
+.espaco { flex: 1; }
 h1 { margin: 0 0 4px; font-size: 1.4rem; }
 .modalidade { margin: 0 0 20px; color: var(--cor-marca); font-size: 0.85rem; }
 .ja-avisado {

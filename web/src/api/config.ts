@@ -62,3 +62,37 @@ export const salvarConvenio = (codigoTs: number, dados: unknown) =>
 
 export const removerConvenio = (codigoTs: number) =>
     enviar('DELETE', `/api/config/convenios/${codigoTs}`);
+
+export type BotaoDef = {
+    type: 'reply' | 'cta_url' | 'cta_call' | 'cta_copy';
+    title: string;
+    id?: string;
+    url?: string;
+    phone_number?: string;
+    copy_code?: string;
+};
+
+export type Canal = {
+    canal: string;
+    numeroRemetente: string;
+    botoesAtivos: boolean;
+    botoes?: BotaoDef[];
+    ativo: boolean;
+    token: string;
+    clientId: string;
+    clientSecret: string;
+} | null;
+
+// O whatsmeow aceita os quatro; a Oficial API só os dois primeiros.
+export const TIPOS_BOTAO = [
+    { valor: 'cta_call', rotulo: 'Ligar' },
+    { valor: 'cta_url', rotulo: 'Abrir link' },
+    { valor: 'cta_copy', rotulo: 'Copiar texto' },
+    { valor: 'reply', rotulo: 'Resposta rápida' },
+] as const;
+
+export function lerCanal(): Promise<{ canal: Canal }> {
+    return buscarJson('/api/config/canal');
+}
+
+export const salvarCanal = (dados: unknown) => enviar('PUT', '/api/config/canal', dados);

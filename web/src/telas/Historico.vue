@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import Skeleton from 'primevue/skeleton';
 import { buscarHistorico, type Envio } from '@/api/historico';
 import { formatarTelefone } from '@/formatadores';
+import CabecalhoApp from '@/componentes/CabecalhoApp.vue';
 
 const router = useRouter();
 
@@ -74,6 +75,7 @@ function dataHora(iso: string): string {
             <button type="button" class="voltar" @click="router.push({ name: 'hoje' })" aria-label="Voltar">←</button>
             <h1>Histórico</h1>
             <span v-if="!carregando" class="conta">{{ total }}</span>
+            <CabecalhoApp />
         </header>
 
         <input v-model="busca" type="search" class="busca" placeholder="Nome do cliente ou número da receita">

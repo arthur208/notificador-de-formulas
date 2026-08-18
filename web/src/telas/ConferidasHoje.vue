@@ -5,6 +5,7 @@ import DatePicker from 'primevue/datepicker';
 import Skeleton from 'primevue/skeleton';
 import CartaoReceita from '@/componentes/CartaoReceita.vue';
 import BarraCodigo from '@/componentes/BarraCodigo.vue';
+import CabecalhoApp from '@/componentes/CabecalhoApp.vue';
 import { buscarConferidas } from '@/api/conferidas';
 import { dataParaExibicao } from '@/formatadores';
 import type { Conferida } from '@/api/tipos';
@@ -55,7 +56,10 @@ function abrir(codigo: number) {
 <template>
     <main class="tela com-rodape-fixo">
         <header class="cabecalho">
-            <p class="marca">bioessência</p>
+            <div class="linha-marca">
+                <p class="marca">bioessência</p>
+                <CabecalhoApp />
+            </div>
             <h1>Conferidas</h1>
             <div class="linha-data">
                 <span class="data-legivel">{{ dataParaExibicao(paraIso(dataSelecionada)) }}</span>
@@ -113,6 +117,7 @@ function abrir(codigo: number) {
 
 <style scoped>
 .tela { max-width: 720px; margin: 0 auto; padding: 20px 16px 0; }
+.linha-marca { display: flex; align-items: center; justify-content: space-between; }
 .marca { margin: 0; font-size: 0.8rem; letter-spacing: 0.08em; color: var(--cor-marca); }
 h1 { margin: 4px 0 8px; font-size: 1.6rem; }
 .linha-data { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }

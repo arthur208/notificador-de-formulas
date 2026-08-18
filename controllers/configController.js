@@ -9,7 +9,7 @@ async function lerCanal(_req, res) {
 
 async function gravarCanal(req, res) {
     const anterior = await canalConfigService.carregarCanal();
-    const { canal, token, clientId, clientSecret, numeroRemetente, botoesAtivos, ativo } = req.body || {};
+    const { canal, token, clientId, clientSecret, numeroRemetente, botoesAtivos, botoes, ativo } = req.body || {};
 
     // Campo em branco significa "não mexer" — a tela nunca recebe o valor
     // cheio de volta, então não teria como reenviá-lo.
@@ -20,6 +20,7 @@ async function gravarCanal(req, res) {
         clientSecret: clientSecret || anterior?.clientSecret,
         numeroRemetente: numeroRemetente ?? anterior?.numeroRemetente,
         botoesAtivos: Boolean(botoesAtivos),
+        botoes: Array.isArray(botoes) ? botoes : (anterior?.botoes ?? []),
         ativo: ativo !== false,
     };
 

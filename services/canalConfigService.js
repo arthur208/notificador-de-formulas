@@ -36,6 +36,7 @@ function canalParaExibicao(canal) {
         canal: canal.canal,
         numeroRemetente: canal.numeroRemetente,
         botoesAtivos: Boolean(canal.botoesAtivos),
+        botoes: canal.botoes ?? [],
         ativo: Boolean(canal.ativo),
         token: mascarar(canal.token),
         clientId: mascarar(canal.clientId),

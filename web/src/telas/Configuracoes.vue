@@ -4,8 +4,10 @@ import { useRouter } from 'vue-router';
 import EditorTemplate from '@/componentes/EditorTemplate.vue';
 import GradeCidades from '@/componentes/GradeCidades.vue';
 import GradeConvenios from '@/componentes/GradeConvenios.vue';
+import FormConexao from '@/componentes/FormConexao.vue';
 import { lerTemplates, type Template, type Variaveis, type Modalidade } from '@/api/config';
 import { podeGerir, ehAdmin, usuarioAtual } from '@/estado/sessao';
+import CabecalhoApp from '@/componentes/CabecalhoApp.vue';
 
 const router = useRouter();
 
@@ -45,6 +47,7 @@ onMounted(async () => {
             <button type="button" class="voltar" @click="router.push({ name: 'hoje' })" aria-label="Voltar">←</button>
             <h1>Configurações</h1>
             <span v-if="usuarioAtual" class="quem">{{ usuarioAtual.nome }} · {{ usuarioAtual.papel }}</span>
+            <CabecalhoApp />
         </header>
 
         <p v-if="!podeGerir()" class="sem-permissao">
@@ -88,10 +91,7 @@ onMounted(async () => {
             </section>
 
             <section v-else>
-                <p class="aviso-conexao">
-                    As credenciais do canal ficam gravadas cifradas e nunca são exibidas por
-                    inteiro. Deixe um campo em branco para manter o valor atual.
-                </p>
+                <FormConexao />
             </section>
         </template>
     </main>
