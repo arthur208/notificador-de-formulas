@@ -28,6 +28,8 @@ function resolverConfig(env = process.env) {
             dbName: obrigatorio('MONGO_DB_NAME'),
             colecaoLogs: (env.MONGO_COLLECTION_LOGS || COLECAO_LOGS_PADRAO).trim(),
         },
+        chaveCripto: obrigatorio('APP_CRYPTO_KEY'),
+        multiatendBaseUrl: (env.MULTIATEND_BASE_URL || 'https://api2.multiatendweb.com.br').trim(),
         porta: Number(env.PORT) || 3008,
     };
 

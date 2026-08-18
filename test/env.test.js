@@ -9,6 +9,7 @@ const ambienteMinimo = {
     FB_PASS: 'segredo',
     MONGO_URI: 'mongodb://localhost:27017',
     MONGO_DB_NAME: 'notificador_dev',
+    APP_CRYPTO_KEY: 'Y2hhdmVEZVRlc3RlQ29tVHJpbnRhRURvaXNCeXRlcyE=',
 };
 
 test('usa a coleção padrão quando MONGO_COLLECTION_LOGS não é definida', () => {
@@ -58,4 +59,10 @@ test('descreverDestino mostra o banco e omite a senha da URI', () => {
     const texto = descreverDestino(config);
     assert.ok(!texto.includes('senhaSecreta'), 'a senha não pode aparecer no log');
     assert.ok(texto.includes('notificador_dev'), 'o nome do banco precisa aparecer');
+});
+
+test('exige a chave de cifragem', () => {
+    const semChave = { ...ambienteMinimo };
+    delete semChave.APP_CRYPTO_KEY;
+    assert.throws(() => resolverConfig(semChave), /APP_CRYPTO_KEY/);
 });
