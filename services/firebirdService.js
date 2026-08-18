@@ -1,19 +1,35 @@
-const { fbPool } = require('../config/db');
+const { fbPool, config } = require('../config/db');
 // CORREÇÃO: Importa 'toTitleCase' junto com 'decodeFBString'
 const { decodeFBString, toTitleCase } = require('../utils/helpers');
 
-// Wrapper de query (Promise) específico para o Firebird
-function queryFb(sql, params) {
+// Wrapper de query (Promise) específico para o Firebird.
+// A guarda `encerrado` existe para liberar a conexão que chega DEPOIS do
+// timeout — sem ela, cada consulta estourada vazaria uma conexão do pool.
+function queryFb(sql, params, timeoutMs = config.firebird.timeoutMs) {
     return new Promise((resolve, reject) => {
+        let encerrado = false;
+
+        const relogio = setTimeout(() => {
+            encerrado = true;
+            reject(new Error(`Firebird não respondeu em ${timeoutMs}ms.`));
+        }, timeoutMs);
+
         fbPool.get((err, db) => {
+            if (encerrado) {
+                if (db) db.detach();
+                return;
+            }
             if (err) {
-                console.error("Erro ao pegar conexão do pool Firebird:", err);
-                return reject(new Error("Erro ao conectar ao DB Firebird."));
+                clearTimeout(relogio);
+                console.error('Erro ao pegar conexão do pool Firebird:', err);
+                return reject(new Error('Erro ao conectar ao DB Firebird.'));
             }
             db.query(sql, params, (err, result) => {
                 db.detach();
+                if (encerrado) return;
+                clearTimeout(relogio);
                 if (err) {
-                    console.error("Erro na query Firebird:", err);
+                    console.error('Erro na query Firebird:', err);
                     return reject(err);
                 }
                 resolve(result);
