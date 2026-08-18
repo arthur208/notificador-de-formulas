@@ -10,6 +10,10 @@ export async function buscarJson<T>(caminho: string): Promise<T> {
         const resposta = await fetch(caminho, { signal: controlador.signal });
 
         if (!resposta.ok) {
+            // Sessão perdida: leva ao login guardando para onde voltar.
+            if (resposta.status === 401 && !location.pathname.startsWith('/entrar')) {
+                location.assign(`/entrar?destino=${encodeURIComponent(location.pathname)}`);
+            }
             // O backend responde JSON em /api/* desde a Parte 1. Ainda assim,
             // não confiamos: um proxy no caminho pode devolver HTML.
             let mensagem = `Falha na requisição (${resposta.status}).`;
