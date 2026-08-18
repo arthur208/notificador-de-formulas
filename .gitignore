@@ -105,3 +105,15 @@ $RECYCLE.BIN/
 *~
 .directory
 .Trash-*
+
+# --- Front (Vite) ---
+web/node_modules/
+# public/ passa a ser saída de build a partir da Parte 3.
+# Os arquivos versionados que sobrevivem moram em web/public/.
+public/assets/
+public/index.html
+public/sw.js
+public/workbox-*.js
+public/registerSW.js
+public/manifest.webmanifest
+public/icons/

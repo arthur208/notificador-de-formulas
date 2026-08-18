@@ -4,7 +4,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "node --test"
+    "test": "node --test",
+    "build": "npm --prefix web run build",
+    "dev:web": "npm --prefix web run dev"
   },
   "keywords": [],
   "author": "",

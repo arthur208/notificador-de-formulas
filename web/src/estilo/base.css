@@ -1,0 +1,45 @@
+:root {
+    --cor-fundo: #f7f7f5;
+    --cor-superficie: #ffffff;
+    --cor-borda: #e2e2dd;
+    --cor-texto: #1c1c1a;
+    --cor-texto-suave: #6b6b64;
+    --cor-marca: #00796b;
+    --cor-completo: #00796b;
+    --cor-pendente: #d9d9d2;
+    --cor-alerta: #b45309;
+    --raio: 10px;
+    --espaco: 16px;
+
+    --fonte-interface: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --fonte-dados: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: var(--fonte-interface);
+    background: var(--cor-fundo);
+    color: var(--cor-texto);
+    -webkit-text-size-adjust: 100%;
+}
+
+/* Espaço para a barra fixa do rodapé, respeitando a área segura do iPhone. */
+.com-rodape-fixo {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+}
+
+.dados {
+    font-family: var(--fonte-dados);
+    font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+    outline: 2px solid var(--cor-marca);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
