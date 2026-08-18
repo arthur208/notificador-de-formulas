@@ -58,9 +58,34 @@ async function checkExistingLog(codigoReceita) {
     }
 }
 
+/**
+ * Quais das receitas informadas já tiveram envio bem-sucedido.
+ * Uma única consulta — chamar checkExistingLog por receita faria
+ * até 90 idas ao banco para montar uma tela.
+ * @param {number[]} codigos
+ * @returns {Promise<Set<number>>}
+ */
+async function buscarAvisados(codigos) {
+    if (!Array.isArray(codigos) || codigos.length === 0) return new Set();
+    try {
+        const collection = getLogsCollection();
+        const docs = await collection
+            .find(
+                { codigoReceita: { $in: codigos.map(Number) }, status: 'sucesso' },
+                { projection: { codigoReceita: 1 } }
+            )
+            .toArray();
+        return new Set(docs.map((doc) => Number(doc.codigoReceita)));
+    } catch (mongoErr) {
+        console.error('Erro ao buscar receitas já avisadas:', mongoErr);
+        return new Set();
+    }
+}
+
 module.exports = {
     logToMongo,
     findLogs,
     countLogs,
-    checkExistingLog
+    checkExistingLog,
+    buscarAvisados,
 };

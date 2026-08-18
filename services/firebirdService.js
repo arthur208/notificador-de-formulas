@@ -1,6 +1,11 @@
 const { fbPool, config } = require('../config/db');
 // CORREÇÃO: Importa 'toTitleCase' junto com 'decodeFBString'
 const { decodeFBString, toTitleCase } = require('../utils/helpers');
+const { emLotes, listaInteirosSegura } = require('../utils/lotes');
+const { formatarHora } = require('../utils/datas');
+
+const CODIGO_STATUS_CONFERIDO = 12;
+const TAMANHO_LOTE_IN = 1000;
 
 // Wrapper de query (Promise) específico para o Firebird.
 // A guarda `encerrado` existe para liberar a conexão que chega DEPOIS do
@@ -105,8 +110,69 @@ async function getDeliveryData(codigoReceita) {
     return { isDelivery: true, deliveryAddress, codigor };
 }
 
+function mapearConferida(linha) {
+    const total = Number(linha.TOTAL);
+    const conferidas = Number(linha.CONFERIDAS);
+    return {
+        codigoRec: Number(linha.CODIGOREC),
+        nome: toTitleCase(decodeFBString(linha.NOME)),
+        total,
+        conferidas,
+        completa: total > 0 && conferidas === total,
+        hora: formatarHora(linha.ULTIMA_HORA),
+    };
+}
+
+// Receitas com ao menos uma fórmula conferida na data.
+//
+// DUAS consultas de propósito. A versão de uma só, com IN (SELECT ...),
+// mediu 6.455ms contra 77ms — o otimizador do Firebird não empurra o filtro
+// de data para dentro do IN e varre as 510k linhas de RECFORMULAS.
+// Não unifique isto.
+async function getReceitasConferidas(dataISO) {
+    const sqlIds = `
+        SELECT DISTINCT F.CODIGOREC
+        FROM STATUSRECEITA S
+        JOIN RECFORMULAS F ON F.CODIGORF = S.CODIGORF
+        WHERE S.CODIGOCST = ?
+          AND S.DATA = ?
+          AND S.DATA <= CURRENT_DATE
+    `;
+    const linhasIds = await queryFb(sqlIds, [CODIGO_STATUS_CONFERIDO, dataISO]);
+    const ids = linhasIds.map((linha) => Number(linha.CODIGOREC));
+    if (ids.length === 0) return [];
+
+    const conferidas = [];
+    for (const lote of emLotes(ids, TAMANHO_LOTE_IN)) {
+        const listaIn = listaInteirosSegura(lote);
+        const sqlContagens = `
+            SELECT F.CODIGOREC,
+                   COUNT(*) AS TOTAL,
+                   SUM(CASE WHEN EXISTS (
+                         SELECT 1 FROM STATUSRECEITA S
+                         WHERE S.CODIGORF = F.CODIGORF
+                           AND S.CODIGOCST = ${CODIGO_STATUS_CONFERIDO}
+                           AND S.DATA <= CURRENT_DATE
+                       ) THEN 1 ELSE 0 END) AS CONFERIDAS,
+                   MAX(P.NOME) AS NOME,
+                   MAX((SELECT MAX(S3.HOTA) FROM STATUSRECEITA S3
+                        WHERE S3.CODIGORF = F.CODIGORF
+                          AND S3.CODIGOCST = ${CODIGO_STATUS_CONFERIDO}
+                          AND S3.DATA = ?)) AS ULTIMA_HORA
+            FROM RECFORMULAS F
+            LEFT JOIN RECCLIENTE RC ON RC.CODIGOREC = F.CODIGOREC
+            LEFT JOIN PESSOAS    P  ON P.CODIGOPES  = RC.CODIGOPES
+            WHERE F.CODIGOREC IN (${listaIn})
+            GROUP BY F.CODIGOREC
+        `;
+        const parciais = await queryFb(sqlContagens, [dataISO]);
+        conferidas.push(...parciais.map(mapearConferida));
+    }
+    return conferidas;
+}
+
 module.exports = {
     getRecipeData,
-    getDeliveryData
+    getDeliveryData,
+    getReceitasConferidas,
 };
-
