@@ -5,13 +5,15 @@ import EditorTemplate from '@/componentes/EditorTemplate.vue';
 import GradeCidades from '@/componentes/GradeCidades.vue';
 import GradeConvenios from '@/componentes/GradeConvenios.vue';
 import FormConexao from '@/componentes/FormConexao.vue';
+import GradeUsuarios from '@/componentes/GradeUsuarios.vue';
+import ListaAuditoria from '@/componentes/ListaAuditoria.vue';
 import { lerTemplates, type Template, type Variaveis, type Modalidade } from '@/api/config';
 import { podeGerir, ehAdmin, usuarioAtual } from '@/estado/sessao';
 import CabecalhoApp from '@/componentes/CabecalhoApp.vue';
 
 const router = useRouter();
 
-const secao = ref<'templates' | 'cidades' | 'convenios' | 'conexao'>('templates');
+const secao = ref<'templates' | 'cidades' | 'convenios' | 'conexao' | 'usuarios' | 'auditoria'>('templates');
 const templates = ref<Template[]>([]);
 const variaveis = ref<Variaveis | null>(null);
 const modalidadeAtiva = ref<Modalidade>('retirada');
@@ -62,6 +64,8 @@ onMounted(async () => {
                 <button type="button" :class="{ ativa: secao === 'cidades' }" @click="secao = 'cidades'">Cidades e prazos</button>
                 <button type="button" :class="{ ativa: secao === 'convenios' }" @click="secao = 'convenios'">Convênios</button>
                 <button v-if="ehAdmin()" type="button" :class="{ ativa: secao === 'conexao' }" @click="secao = 'conexao'">Conexão</button>
+                <button v-if="ehAdmin()" type="button" :class="{ ativa: secao === 'usuarios' }" @click="secao = 'usuarios'">Usuários</button>
+                <button v-if="ehAdmin()" type="button" :class="{ ativa: secao === 'auditoria' }" @click="secao = 'auditoria'">Auditoria</button>
             </nav>
 
             <section v-if="secao === 'templates'">
@@ -88,6 +92,14 @@ onMounted(async () => {
 
             <section v-else-if="secao === 'convenios'">
                 <GradeConvenios />
+            </section>
+
+            <section v-else-if="secao === 'usuarios'">
+                <GradeUsuarios />
+            </section>
+
+            <section v-else-if="secao === 'auditoria'">
+                <ListaAuditoria />
             </section>
 
             <section v-else>

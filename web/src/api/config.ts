@@ -99,3 +99,40 @@ export function lerCanal(): Promise<{ canal: Canal }> {
 }
 
 export const salvarCanal = (dados: unknown) => enviar('PUT', '/api/config/canal', dados);
+
+export type Usuario = {
+    _id: string;
+    nome: string;
+    email: string;
+    papel: string;
+    ativo: boolean;
+    ultimoAcesso: string | null;
+};
+
+export type RegistroAuditoria = {
+    _id: string;
+    usuarioNome: string;
+    acao: string;
+    entidade: string;
+    entidadeId: string | number | null;
+    valorAnterior?: unknown;
+    valorNovo?: unknown;
+    quando: string;
+};
+
+export function lerUsuarios(): Promise<{ usuarios: Usuario[]; papeis: string[] }> {
+    return buscarJson('/api/config/usuarios');
+}
+
+export function lerAuditoria(limite = 100): Promise<{ registros: RegistroAuditoria[] }> {
+    return buscarJson(`/api/config/auditoria?limite=${limite}`);
+}
+
+export const criarUsuario = (dados: { nome: string; email: string; senha: string; papel: string }) =>
+    enviar('POST', '/api/config/usuarios', dados);
+
+export const atualizarUsuario = (id: string, dados: Partial<Usuario>) =>
+    enviar('PUT', `/api/config/usuarios/${id}`, dados);
+
+export const redefinirSenha = (id: string, senha: string) =>
+    enviar('PUT', `/api/config/usuarios/${id}/senha`, { senha });
