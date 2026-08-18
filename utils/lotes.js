@@ -17,7 +17,14 @@ function emLotes(itens, tamanho) {
 function listaInteirosSegura(valores) {
     return valores
         .map((valor) => {
-            const numero = Number(valor);
+            // Number() é permissivo demais aqui: Number(null), Number(''),
+            // Number(false) e Number([]) valem 0, todos inteiros. Só aceitamos
+            // número de verdade ou string composta apenas de dígitos.
+            const numero =
+                typeof valor === 'number' ? valor
+                : typeof valor === 'string' && /^-?\d+$/.test(valor.trim()) ? Number(valor.trim())
+                : NaN;
+
             if (!Number.isInteger(numero)) {
                 throw new Error(`valor não inteiro na lista: ${JSON.stringify(valor)}`);
             }
