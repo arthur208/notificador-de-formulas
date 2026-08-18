@@ -1,5 +1,107 @@
-# Dependências
-/node_modules
+# ==============================================================
+#  notificador-de-formulas  —  Node.js / Express / PWA
+# ==============================================================
 
-# Arquivo de ambiente
+# --- Dependências ---------------------------------------------
+node_modules/
+jspm_packages/
+.pnp
+.pnp.js
+.yarn/cache
+.yarn/unplugged
+.yarn/install-state.gz
+
+# --- Segredos e ambiente --------------------------------------
+# NUNCA commitar: contém credenciais do Firebird, URI do Mongo
+# e a URL do webhook de envio.
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
+
+# --- Logs -----------------------------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# --- Runtime / processo ---------------------------------------
+pids/
+*.pid
+*.seed
+*.pid.lock
+.node_repl_history
+
+# --- Testes e cobertura ---------------------------------------
+coverage/
+*.lcov
+.nyc_output/
+test-results/
+playwright-report/
+.vitest/
+
+# --- Cache e build --------------------------------------------
+.cache/
+.parcel-cache/
+.npm/
+.eslintcache
+.stylelintcache
+dist/
+build/
+tmp/
+temp/
+*.tsbuildinfo
+
+# --- Binários e executáveis -----------------------------------
+# Binário do connectzap (~30MB) — distribuído à parte, não versionar.
+connectzap-x86_64
+connectzap*.exe
+*.exe
+*.dll
+*.so
+*.dylib
+
+# --- Dumps e backups de banco ---------------------------------
+*.fdb
+*.gdb
+*.fbk
+*.bak
+*.dump
+*.sql.gz
+
+# --- Editores e IDEs ------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+.idea/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+.history/
+
+# --- Sistema operacional --------------------------------------
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+# Linux
+*~
+.directory
+.Trash-*

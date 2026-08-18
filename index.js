@@ -6,10 +6,11 @@ const cors = require('cors');
 const ipWhitelistMiddleware = require('./middleware/ipWhitelist');
 const apiRoutes = require('./routes/api');
 // Removido testPgConnection da importação
-const { connectToMongo } = require('./config/db');
+const { connectToMongo, config } = require('./config/db');
+const { descreverDestino } = require('./config/env');
 
 const app = express();
-const PORT = process.env.PORT || 80; // Usa a porta do .env ou 80
+const PORT = config.porta;
 
 // --- Middlewares Globais ---
 app.set('trust proxy', 1); // Confia no proxy (para o req.ip funcionar)
@@ -25,6 +26,10 @@ app.use('/api', apiRoutes);
 // --- Inicialização do Servidor ---
 async function startServer() {
     try {
+        console.log('--- Destino das conexões ---');
+        console.log('  ' + descreverDestino(config));
+        console.log('----------------------------');
+
         // 1. Testa Conexão MongoDB
         await connectToMongo();
 
