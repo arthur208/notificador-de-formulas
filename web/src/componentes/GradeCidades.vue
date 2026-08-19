@@ -91,7 +91,7 @@ async function apagar(codigoCid: number) {
                 <input v-model.number="dias" type="number" min="0" :disabled="local">
             </label>
 
-            <label class="marcacao">
+            <label class="marcacao" :class="{ ligado: local }">
                 <input v-model="local" type="checkbox">
                 entrega local
             </label>
@@ -152,16 +152,23 @@ async function apagar(codigoCid: number) {
 label { display: grid; gap: 4px; font-size: 0.8rem; color: var(--cor-texto-suave); }
 .cresce { flex: 1; min-width: 260px; }
 .estreito { width: 130px; }
-.marcacao {
-    display: flex; align-items: center; gap: 6px;
-    font-size: 0.88rem; color: var(--cor-texto); padding-bottom: 10px;
-}
 select, input {
     padding: 10px 12px; font: inherit; font-size: 0.9rem; color: var(--cor-texto);
     border: 1px solid var(--cor-borda); border-radius: 6px; background: var(--cor-fundo);
 }
-.marcacao input { padding: 0; }
 input:disabled { background: var(--cor-borda); color: var(--cor-texto-suave); }
+
+/* Caixa da mesma altura dos campos: solto, o checkbox de 13px ficava
+   flutuando ao lado de campos de 44px. */
+.marcacao {
+    display: flex; align-items: center; gap: 9px;
+    height: 44px; padding: 0 14px; cursor: pointer;
+    font-size: 0.88rem; color: var(--cor-texto);
+    border: 1px solid var(--cor-borda); border-radius: 6px; background: var(--cor-fundo);
+}
+.marcacao.ligado { border-color: var(--cor-marca); color: var(--cor-marca); font-weight: 600; }
+.marcacao input { width: 16px; height: 16px; margin: 0; padding: 0; cursor: pointer; }
+input[type='checkbox'] { accent-color: var(--cor-marca); width: 16px; height: 16px; }
 .adicionar {
     padding: 11px 22px; font: inherit; font-weight: 600;
     background: var(--cor-marca); color: #fff; border: 0; border-radius: 6px;

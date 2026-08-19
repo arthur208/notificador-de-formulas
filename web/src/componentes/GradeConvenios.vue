@@ -212,6 +212,7 @@ select, input {
     border: 1px solid var(--cor-borda); border-radius: 6px; background: var(--cor-fundo);
 }
 select { min-width: 260px; }
+input[type='checkbox'] { accent-color: var(--cor-marca); width: 16px; height: 16px; }
 .adicionar {
     padding: 11px 22px; font: inherit; font-weight: 600;
     background: var(--cor-marca); color: #fff; border: 0; border-radius: 6px;
