@@ -12,6 +12,11 @@ const props = defineProps<{
     botoesDisponiveis?: boolean;
 }>();
 
+// A tela mãe guarda a lista de templates; sem avisá-la do que foi gravado,
+// ela continua com a cópia anterior e devolve o texto velho na próxima vez
+// que este editor for montado — a alteração parece ter se perdido.
+const emit = defineEmits<{ salvo: [Template] }>();
+
 const MAX_BOTOES = 3;
 // O fornecedor não documenta limite. O número vem da API oficial do
 // WhatsApp e serve de aviso: passando disso, ela corta na exibição.
@@ -24,10 +29,10 @@ const salvando = ref(false);
 const erro = ref<string | null>(null);
 const salvo = ref(false);
 
-watch(() => props.template, (novo) => {
-    cabecalho.value = novo.cabecalho ?? '';
-    corpo.value = novo.corpo;
-    botoes.value = novo.botoes ? [...novo.botoes] : [];
+watch(() => props.template.modalidade, () => {
+    cabecalho.value = props.template.cabecalho ?? '';
+    corpo.value = props.template.corpo;
+    botoes.value = props.template.botoes ? [...props.template.botoes] : [];
 });
 
 // Valores de exemplo só para a prévia — nunca vão para o envio.
@@ -98,11 +103,13 @@ async function guardar() {
     erro.value = null;
     salvo.value = false;
     try {
-        await salvarTemplate(props.template.modalidade as Modalidade, {
+        const gravado = {
             cabecalho: cabecalho.value,
             corpo: corpo.value,
             botoes: botoes.value,
-        });
+        };
+        await salvarTemplate(props.template.modalidade as Modalidade, gravado);
+        emit('salvo', { ...props.template, ...gravado, botoes: [...botoes.value] });
         salvo.value = true;
     } catch (e) {
         erro.value = e instanceof Error ? e.message : 'Não foi possível salvar.';

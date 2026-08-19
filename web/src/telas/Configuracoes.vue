@@ -34,6 +34,13 @@ const NOME_MODALIDADE: Record<string, string> = {
     convenio: 'Convênio',
 };
 
+// Mantém a lista em memória igual ao banco depois de gravar.
+function aoSalvar(atualizado: Template) {
+    const i = templates.value.findIndex((t) => t.modalidade === atualizado.modalidade);
+    if (i >= 0) templates.value[i] = atualizado;
+    else templates.value.push(atualizado);
+}
+
 const templatesOrdenados = computed(() =>
     [...templates.value].sort(
         (a, b) => ORDEM.indexOf(a.modalidade) - ORDEM.indexOf(b.modalidade)
@@ -106,6 +113,7 @@ onMounted(async () => {
                     :template="templateAtivo"
                     :variaveis-disponiveis="variaveisDaModalidade"
                     :botoes-disponiveis="botoesDisponiveis"
+                    @salvo="aoSalvar"
                 />
             </section>
 
