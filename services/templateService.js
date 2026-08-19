@@ -23,6 +23,14 @@ const TEMPLATES_PADRAO = {
             'e será enviada para entrega. 🚚✅\n\n' +
             'Endereço de destino:\n{{endereco}}\n\nFicamos à disposição!',
     },
+    entrega_local: {
+        titulo: 'Fórmula a caminho, entrega local',
+        corpo:
+            '{{saudacao}}, {{nome}}! 👋\n\n' +
+            'A Farmácia Bioessência informa: Sua receita (Nº {{codigo}}) está pronta ' +
+            'e sai hoje para entrega aqui em {{cidade}}. 🚚✅\n\n' +
+            'Endereço de destino:\n{{endereco}}\n\nFicamos à disposição!',
+    },
     convenio: {
         titulo: 'Fórmula no convênio',
         corpo:
@@ -38,6 +46,7 @@ const VARIAVEIS_GLOBAIS = ['saudacao', 'nome', 'codigo', 'qtdFormulas'];
 const VARIAVEIS_POR_MODALIDADE = {
     retirada: [],
     entrega: ['endereco', 'cidade', 'dias'],
+    entrega_local: ['endereco', 'cidade', 'dias'],
     convenio: ['local', 'dias'],
 };
 

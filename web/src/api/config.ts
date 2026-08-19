@@ -1,13 +1,13 @@
 import { buscarJson } from './cliente';
 
-export type Modalidade = 'retirada' | 'entrega' | 'convenio';
+export type Modalidade = 'retirada' | 'entrega' | 'entrega_local' | 'convenio';
 export type Template = {
     modalidade: Modalidade; titulo: string; corpo: string;
     botoes?: BotaoDef[]; versao?: number;
 };
 export type Cidade = {
     codigoCid: number; nome: string; uf: string;
-    dias: number; templateId: string | null; ativo: boolean;
+    dias: number; local: boolean; ativo: boolean;
 };
 export type Sugestao = { codigoCid: number; nome: string; uf: string; entregas: number };
 export type Variaveis = { globais: string[]; porModalidade: Record<Modalidade, string[]> };

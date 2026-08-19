@@ -19,6 +19,22 @@ const variaveis = ref<Variaveis | null>(null);
 const modalidadeAtiva = ref<Modalidade>('retirada');
 const erro = ref<string | null>(null);
 
+// Ordem e nomes fixos: o Mongo devolve na ordem de inserção, e
+// "entrega_local" com underscore não é nome para mostrar a ninguém.
+const ORDEM: Modalidade[] = ['retirada', 'entrega', 'entrega_local', 'convenio'];
+const NOME_MODALIDADE: Record<string, string> = {
+    retirada: 'Retirada na loja',
+    entrega: 'Entrega',
+    entrega_local: 'Entrega local',
+    convenio: 'Convênio',
+};
+
+const templatesOrdenados = computed(() =>
+    [...templates.value].sort(
+        (a, b) => ORDEM.indexOf(a.modalidade) - ORDEM.indexOf(b.modalidade)
+    )
+);
+
 const templateAtivo = computed(() =>
     templates.value.find((t) => t.modalidade === modalidadeAtiva.value) ?? null
 );
@@ -71,12 +87,12 @@ onMounted(async () => {
             <section v-if="secao === 'templates'">
                 <nav class="modalidades">
                     <button
-                        v-for="t in templates"
+                        v-for="t in templatesOrdenados"
                         :key="t.modalidade"
                         type="button"
                         :class="{ ativa: modalidadeAtiva === t.modalidade }"
                         @click="modalidadeAtiva = t.modalidade as Modalidade"
-                    >{{ t.modalidade }}</button>
+                    >{{ NOME_MODALIDADE[t.modalidade] ?? t.modalidade }}</button>
                 </nav>
                 <EditorTemplate
                     v-if="templateAtivo"
@@ -124,6 +140,7 @@ h1 { font-size: 1.5rem; margin: 0; }
 .abas button.ativa, .modalidades button.ativa {
     background: var(--cor-superficie); color: var(--cor-texto); border-color: var(--cor-marca);
 }
+.modalidades button { text-transform: none; }
 .sem-permissao, .aviso-conexao { color: var(--cor-texto-suave); }
 .erro { color: #b91c1c; }
 </style>

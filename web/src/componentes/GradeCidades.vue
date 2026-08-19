@@ -35,7 +35,7 @@ async function guardar(cidade: Cidade) {
 async function adicionar(sugestao: Sugestao) {
     try {
         await salvarCidade(sugestao.codigoCid, {
-            nome: sugestao.nome, uf: sugestao.uf, dias: 2, templateId: null, ativo: true,
+            nome: sugestao.nome, uf: sugestao.uf, dias: 2, local: false, ativo: true,
         });
         await recarregar();
     } catch (e) {
@@ -52,6 +52,10 @@ async function apagar(codigoCid: number) {
 <template>
     <div>
         <p v-if="erro" class="erro">{{ erro }}</p>
+        <p class="explica">
+            Marque <strong>entrega local</strong> na cidade da farmácia: ela usa a
+            mensagem "Entrega local", que fala em sair hoje em vez de prometer prazo.
+        </p>
 
         <p v-if="!carregando && sugestoes.length > 0" class="alerta">
             Estas cidades tiveram entrega nos últimos 12 meses e ainda não têm prazo cadastrado.
@@ -69,7 +73,7 @@ async function apagar(codigoCid: number) {
 
         <table class="grade">
             <thead>
-                <tr><th>Cidade</th><th>UF</th><th>Prazo (dias úteis)</th><th>Ativa</th><th></th></tr>
+                <tr><th>Cidade</th><th>UF</th><th>Prazo (dias úteis)</th><th>Entrega local</th><th>Ativa</th><th></th></tr>
             </thead>
             <tbody>
                 <tr v-for="cidade in cidades" :key="cidade.codigoCid">
@@ -80,12 +84,15 @@ async function apagar(codigoCid: number) {
                                @change="guardar(cidade)">
                     </td>
                     <td>
+                        <input v-model="cidade.local" type="checkbox" @change="guardar(cidade)">
+                    </td>
+                    <td>
                         <input v-model="cidade.ativo" type="checkbox" @change="guardar(cidade)">
                     </td>
                     <td><button type="button" class="remover" @click="apagar(cidade.codigoCid)">remover</button></td>
                 </tr>
                 <tr v-if="!carregando && cidades.length === 0">
-                    <td colspan="5" class="vazio">Nenhuma cidade cadastrada ainda.</td>
+                    <td colspan="6" class="vazio">Nenhuma cidade cadastrada ainda.</td>
                 </tr>
             </tbody>
         </table>
@@ -93,6 +100,7 @@ async function apagar(codigoCid: number) {
 </template>
 
 <style scoped>
+.explica { color: var(--cor-texto-suave); font-size: 0.85rem; margin-bottom: 16px; }
 .alerta {
     background: #fff7ed; border: 1px solid #fed7aa; color: var(--cor-alerta);
     border-radius: var(--raio); padding: 10px 12px; font-size: 0.85rem;

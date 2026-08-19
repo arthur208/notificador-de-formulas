@@ -14,7 +14,7 @@ async function listarCidades() {
     return colecao().find({}).sort({ nome: 1 }).toArray();
 }
 
-async function salvarCidade(codigoCid, { nome, uf, dias, templateId, ativo }) {
+async function salvarCidade(codigoCid, { nome, uf, dias, local, ativo }) {
     const codigo = Number(codigoCid);
     if (!Number.isInteger(codigo)) throw new Error('Código de cidade inválido.');
 
@@ -29,7 +29,8 @@ async function salvarCidade(codigoCid, { nome, uf, dias, templateId, ativo }) {
             $set: {
                 codigoCid: codigo, nome, uf,
                 dias: diasNumero,
-                templateId: templateId || null,
+                // Loanda é entrega local; as demais usam o texto padrão.
+                local: Boolean(local),
                 ativo: ativo !== false,
                 atualizadoEm: new Date(),
             },
@@ -48,7 +49,7 @@ async function resolverPrazo(codigoCid) {
     if (codigoCid === null || codigoCid === undefined) return null;
     const cidade = await colecao().findOne({ codigoCid: Number(codigoCid), ativo: true });
     if (!cidade) return null;
-    return { dias: cidade.dias, templateId: cidade.templateId ?? null };
+    return { dias: cidade.dias, local: Boolean(cidade.local) };
 }
 
 module.exports = {
