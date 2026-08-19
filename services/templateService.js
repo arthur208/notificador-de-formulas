@@ -44,7 +44,7 @@ const TEMPLATES_PADRAO = {
         corpo:
             '{{saudacao}}, {{nome}}! 👋\n\n' +
             'A Farmácia Bioessência informa: Sua receita (Nº {{codigo}}) foi enviada ' +
-            'e estará disponível para retirada {{local}} em {{dias}} dias úteis. 💊✅\n\n' +
+            'e estará disponível para retirada {{local}} em {{dias}}. 💊✅\n\n' +
             'Ficamos à disposição!',
     },
 };

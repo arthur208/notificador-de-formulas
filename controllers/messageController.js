@@ -5,6 +5,7 @@ const templateService = require('../services/templateService');
 const { formatPhoneNumber, getSaudacao, toTitleCase } = require('../utils/helpers');
 const { renderizar, VariavelAusenteError } = require('../utils/template');
 const { montarEndereco } = require('../utils/endereco');
+const { emDiasUteis } = require('../utils/prazo');
 const cidadeService = require('../services/cidadeService');
 const convenioService = require('../services/convenioService');
 
@@ -46,7 +47,7 @@ async function montarMensagem(codigoReceita, nomeCliente, convenioTs) {
         ...comuns,
         endereco: montarEndereco(deliveryAddress) || undefined,
         cidade: deliveryAddress?.cidade || undefined,
-        dias: prazo?.dias,
+        dias: emDiasUteis(prazo?.dias),
     };
     return {
         texto: renderizar(template.corpo, valores),

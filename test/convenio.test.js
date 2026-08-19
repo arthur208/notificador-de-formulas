@@ -7,7 +7,15 @@ test('monta local e dias a partir da configuração', () => {
         nomeExibicao: 'na Farmácia Porto Rico', dias: 3, variaveis: [],
     });
     assert.strictEqual(valores.local, 'na Farmácia Porto Rico');
-    assert.strictEqual(valores.dias, 3);
+    // Por extenso, não o número cru: o template escreve só "em {{dias}}".
+    assert.strictEqual(valores.dias, '3 dias úteis');
+});
+
+test('prazo de um dia concorda no singular', () => {
+    const valores = variaveisDoConvenio({
+        nomeExibicao: 'na Farmácia Porto Rico', dias: 1, variaveis: [],
+    });
+    assert.strictEqual(valores.dias, '1 dia útil');
 });
 
 test('inclui as variáveis livres', () => {

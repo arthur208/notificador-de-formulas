@@ -35,7 +35,7 @@ const EXEMPLO: Record<string, string> = {
     qtdFormulas: '4',
     endereco: 'Rua das Palmeiras, 123 - Centro - Loanda/PR',
     cidade: 'Loanda',
-    dias: '2',
+    dias: '2 dias úteis',
     local: 'na Farmácia Porto Rico',
     horario: 'Seg a Sex, 8h às 18h',
 };
@@ -136,6 +136,11 @@ async function guardar() {
                     @click="inserir(nome)"
                 >{{ rotulo(nome) }}</button>
             </div>
+            <p v-if="variaveisDisponiveis.includes('dias')" class="dica">
+                <span class="exemplo">{{ rotulo('dias') }}</span> já vem por extenso —
+                <span class="exemplo">1 dia útil</span>, <span class="exemplo">2 dias úteis</span>.
+                Escreva só "em {{ rotulo('dias') }}", sem repetir a unidade.
+            </p>
 
             <h3 class="titulo-botoes">Botões desta mensagem</h3>
             <p class="dica">

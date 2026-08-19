@@ -1,4 +1,5 @@
 const { getDb } = require('../config/db');
+const { emDiasUteis } = require('../utils/prazo');
 
 const COLECAO = 'convenios';
 // Variáveis livres não podem sombrear estas — a validação impede na gravação,
@@ -65,7 +66,7 @@ async function removerConvenio(codigoTs) {
 
 function variaveisDoConvenio(config) {
     if (!config) return {};
-    const valores = { local: config.nomeExibicao, dias: config.dias };
+    const valores = { local: config.nomeExibicao, dias: emDiasUteis(config.dias) };
     for (const { chave, valor } of config.variaveis ?? []) {
         if (!RESERVADAS.has(chave)) valores[chave] = valor;
     }
