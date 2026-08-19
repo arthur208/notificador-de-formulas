@@ -8,9 +8,30 @@ import BarraCodigo from '@/componentes/BarraCodigo.vue';
 import CabecalhoApp from '@/componentes/CabecalhoApp.vue';
 import { buscarConferidas } from '@/api/conferidas';
 import { dataParaExibicao } from '@/formatadores';
-import type { Conferida, RespostaConferidas } from '@/api/tipos';
+import type { Conferida, RespostaConferidas, Modalidade } from '@/api/tipos';
 
 type Aba = 'avisar' | 'avisadas' | 'aguardando';
+type Grupo = 'todas' | 'retirada' | 'entrega' | 'entrega_local' | 'convenio';
+
+// "Entrega sem prazo" é distinção de configuração; no balcão as duas são
+// entrega, e separá-las no filtro só dividiria a lista sem motivo.
+const GRUPO_DE: Record<Modalidade, Grupo> = {
+    retirada: 'retirada',
+    entrega: 'entrega',
+    entrega_sem_prazo: 'entrega',
+    entrega_local: 'entrega_local',
+    convenio: 'convenio',
+};
+
+const NOME_GRUPO: Record<Grupo, string> = {
+    todas: 'Todas',
+    retirada: 'Retirada',
+    entrega: 'Entrega',
+    entrega_local: 'Entrega local',
+    convenio: 'Convênio',
+};
+
+const ORDEM_GRUPO: Grupo[] = ['todas', 'retirada', 'entrega', 'entrega_local', 'convenio'];
 
 const router = useRouter();
 
@@ -21,6 +42,7 @@ const carregando = ref(true);
 const erro = ref<string | null>(null);
 const demorando = ref(false);
 const aba = ref<Aba>('avisar');
+const grupo = ref<Grupo>('todas');
 
 const INTERVALO_MS = 60_000;
 const atualizadoEm = ref<Date | null>(null);
@@ -43,6 +65,41 @@ const ABAS = computed(() => [
 ]);
 
 const abaAtiva = computed(() => ABAS.value.find((a) => a.id === aba.value)!);
+
+function grupoDa(receita: Conferida): Grupo | null {
+    return receita.modalidade ? GRUPO_DE[receita.modalidade] : null;
+}
+
+// Só os grupos que existem na aba, com quantos há em cada. Filtro que
+// oferece "Convênio (0)" faz a atendente clicar para achar nada.
+const FILTROS = computed(() => {
+    const itens = abaAtiva.value.itens;
+    const conta = new Map<Grupo, number>();
+    for (const receita of itens) {
+        const g = grupoDa(receita);
+        if (g) conta.set(g, (conta.get(g) ?? 0) + 1);
+    }
+    const presentes = ORDEM_GRUPO.filter((g) => g !== 'todas' && conta.has(g));
+    if (presentes.length < 2) return [];
+    return [
+        { id: 'todas' as Grupo, rotulo: NOME_GRUPO.todas, quantos: itens.length },
+        ...presentes.map((g) => ({ id: g, rotulo: NOME_GRUPO[g], quantos: conta.get(g)! })),
+    ];
+});
+
+const itensVisiveis = computed(() =>
+    grupo.value === 'todas'
+        ? abaAtiva.value.itens
+        : abaAtiva.value.itens.filter((r) => grupoDa(r) === grupo.value)
+);
+
+// Trocar de aba pode deixar o filtro apontando para um grupo que não
+// existe ali — a tela ficaria vazia sem explicar por quê.
+watch([aba, FILTROS], () => {
+    if (grupo.value !== 'todas' && !FILTROS.value.some((f) => f.id === grupo.value)) {
+        grupo.value = 'todas';
+    }
+});
 
 const VAZIO: Record<Aba, string> = {
     avisar: 'Tudo avisado neste dia. Nada pendente.',
@@ -213,6 +270,20 @@ function abrir(codigo: number) {
                     <span class="conta">{{ a.itens.length }}</span>
                 </button>
             </nav>
+
+            <nav v-if="FILTROS.length > 0" class="filtros" aria-label="Filtrar por tipo">
+                <button
+                    v-for="f in FILTROS"
+                    :key="f.id"
+                    type="button"
+                    :class="['filtro', f.id, { ativo: grupo === f.id }]"
+                    :aria-pressed="grupo === f.id"
+                    @click="grupo = f.id"
+                >
+                    {{ f.rotulo }}
+                    <span class="quantos">{{ f.quantos }}</span>
+                </button>
+            </nav>
         </header>
 
         <p v-if="demorando" class="aviso">Está demorando mais que o normal. Aguarde.</p>
@@ -236,9 +307,13 @@ function abrir(codigo: number) {
         <template v-else>
             <p v-if="abaAtiva.itens.length === 0" class="vazio">{{ VAZIO[aba] }}</p>
 
+            <p v-else-if="itensVisiveis.length === 0" class="vazio">
+                Nenhuma receita de {{ NOME_GRUPO[grupo].toLowerCase() }} nesta aba.
+            </p>
+
             <div v-else class="grade">
                 <CartaoReceita
-                    v-for="receita in abaAtiva.itens"
+                    v-for="receita in itensVisiveis"
                     :key="receita.codigoRec"
                     :receita="receita"
                     :clicavel="aba !== 'aguardando'"
@@ -277,8 +352,33 @@ h1 { margin: 4px 0 0; font-size: 1.6rem; }
 
 .abas {
     display: flex; gap: 4px; flex-wrap: wrap;
-    border-bottom: 1px solid var(--cor-borda); margin-bottom: 20px;
+    border-bottom: 1px solid var(--cor-borda);
 }
+
+.filtros { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 20px; }
+.filtro {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 12px; font: inherit; font-size: 0.82rem; cursor: pointer;
+    color: var(--cor-texto-suave);
+    background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda); border-radius: 20px;
+}
+.filtro:hover { color: var(--cor-texto); }
+.filtro .quantos {
+    font-size: 0.72rem; font-variant-numeric: tabular-nums;
+    background: var(--cor-borda); color: var(--cor-texto);
+    border-radius: 20px; padding: 0 6px;
+}
+/* Ativo assume a cor do selo do cartão: o filtro e o que ele filtra
+   precisam ser reconhecíveis como a mesma coisa. */
+.filtro.ativo { font-weight: 600; }
+.filtro.todas.ativo { background: var(--cor-marca); border-color: var(--cor-marca); color: #fff; }
+.filtro.retirada.ativo { background: #e0e7ff; border-color: #a5b4fc; color: #3730a3; }
+.filtro.entrega.ativo { background: #ffedd5; border-color: #fdba74; color: #9a3412; }
+.filtro.entrega_local.ativo { background: #cffafe; border-color: #67e8f9; color: #155e75; }
+.filtro.convenio.ativo { background: #f3e8ff; border-color: #d8b4fe; color: #6b21a8; }
+.filtro.ativo .quantos { background: rgb(255 255 255 / 0.55); }
+.filtro.todas.ativo .quantos { background: rgb(255 255 255 / 0.25); color: #fff; }
 .aba {
     display: flex; align-items: center; gap: 8px;
     padding: 11px 14px; margin-bottom: -1px;
