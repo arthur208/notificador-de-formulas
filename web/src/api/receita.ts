@@ -11,6 +11,29 @@ export type DetalheReceita = {
     conveniosSugeridos: { codigoTs: number; nome: string; nomeExibicao: string }[];
 };
 
+export type Situacao = 'tem' | 'nao_tem' | 'desconhecido' | 'invalido';
+
+export type NumeroValidado = {
+    numero: string;
+    situacao: Situacao;
+    numeroEnvio: string | null;
+    nomeVerificado?: string | null;
+    doCache?: boolean;
+};
+
+export async function validarNumeros(
+    numeros: string[],
+    forcar = false
+): Promise<NumeroValidado[]> {
+    const resposta = await fetch('/api/numeros/validar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ numeros, forcar }),
+    });
+    if (!resposta.ok) throw new Error('Não foi possível validar os números.');
+    return (await resposta.json()).numeros;
+}
+
 export function buscarReceita(codigo: number | string): Promise<DetalheReceita> {
     return buscarJson<DetalheReceita>(`/api/cliente/${encodeURIComponent(String(codigo))}`);
 }

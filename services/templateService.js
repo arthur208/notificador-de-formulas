@@ -6,7 +6,12 @@ const MAX_BOTOES = 3;
 
 // O endpoint de botões exige `title`. Se o cabeçalho do template estiver
 // vazio, é este que vai — nunca deixamos o envio falhar por falta dele.
-const CABECALHO_PADRAO = 'Farmácia Bioessência';
+const CABECALHO_PADRAO = 'Farmácia Bioessência Informa:';
+
+// O clique do cliente abre atendimento no MultiAtendWeb; este sistema não
+// lê a resposta (decisão D8). Os ids existem para o bot decidir depois.
+const BOTAO_CONFIRMAR = { type: 'reply', id: 'confirmar', title: 'Confirmar' };
+const BOTAO_ENDERECO = { type: 'reply', id: 'endereco_errado', title: 'Endereço Errado' };
 
 // Limite não documentado pelo fornecedor. O WhatsApp corta cabeçalho longo
 // na exibição; o número vem da API oficial e serve como aviso, não trava.
@@ -17,17 +22,19 @@ const CABECALHO_RECOMENDADO = 60;
 const TEMPLATES_PADRAO = {
     retirada: {
         cabecalho: CABECALHO_PADRAO,
+        botoes: [BOTAO_CONFIRMAR],
         corpo:
             '{{saudacao}}, {{nome}}! 👋\n\n' +
-            'A Farmácia Bioessência informa: Sua receita (Nº {{codigo}}) está pronta ' +
+            'Sua receita (Nº {{codigo}}) está pronta ' +
             'para retirada em nossa loja. 💊✅\n\n' +
             'Ficamos à disposição e aguardamos sua visita!',
     },
     entrega: {
         cabecalho: CABECALHO_PADRAO,
+        botoes: [BOTAO_CONFIRMAR, BOTAO_ENDERECO],
         corpo:
             '{{saudacao}}, {{nome}}! 👋\n\n' +
-            'A Farmácia Bioessência informa: Sua receita (Nº {{codigo}}) está pronta ' +
+            'Sua receita (Nº {{codigo}}) está pronta ' +
             'e será enviada para entrega em {{cidade}}. 🚚✅\n\n' +
             'Previsão de entrega: {{dias}}.\n\n' +
             'Endereço de destino:\n{{endereco}}\n\nFicamos à disposição!',
@@ -36,26 +43,29 @@ const TEMPLATES_PADRAO = {
     // entrega que pode sair para as 47 cidades ainda não cadastradas.
     entrega_sem_prazo: {
         cabecalho: CABECALHO_PADRAO,
+        botoes: [BOTAO_CONFIRMAR, BOTAO_ENDERECO],
         corpo:
             '{{saudacao}}, {{nome}}! 👋\n\n' +
-            'A Farmácia Bioessência informa: Sua receita (Nº {{codigo}}) está pronta ' +
+            'Sua receita (Nº {{codigo}}) está pronta ' +
             'e será enviada para entrega. 🚚✅\n\n' +
             'Endereço de destino:\n{{endereco}}\n\n' +
             'Assim que sair para entrega avisamos por aqui. Ficamos à disposição!',
     },
     entrega_local: {
         cabecalho: CABECALHO_PADRAO,
+        botoes: [BOTAO_CONFIRMAR, BOTAO_ENDERECO],
         corpo:
             '{{saudacao}}, {{nome}}! 👋\n\n' +
-            'A Farmácia Bioessência informa: Sua receita (Nº {{codigo}}) está pronta ' +
+            'Sua receita (Nº {{codigo}}) está pronta ' +
             'e sai hoje para entrega aqui em {{cidade}}. 🚚✅\n\n' +
             'Endereço de destino:\n{{endereco}}\n\nFicamos à disposição!',
     },
     convenio: {
         cabecalho: CABECALHO_PADRAO,
+        botoes: [BOTAO_CONFIRMAR, BOTAO_ENDERECO],
         corpo:
             '{{saudacao}}, {{nome}}! 👋\n\n' +
-            'A Farmácia Bioessência informa: Sua receita (Nº {{codigo}}) foi enviada ' +
+            'Sua receita (Nº {{codigo}}) foi enviada ' +
             'e estará disponível para retirada {{local}} em {{dias}}. 💊✅\n\n' +
             'Ficamos à disposição!',
     },

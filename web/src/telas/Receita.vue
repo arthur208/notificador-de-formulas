@@ -4,7 +4,10 @@ import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import Textarea from 'primevue/textarea';
 import Skeleton from 'primevue/skeleton';
-import { buscarReceita, enviarAviso, listarTelefones, type DetalheReceita, type Telefone } from '@/api/receita';
+import {
+    buscarReceita, enviarAviso, listarTelefones, validarNumeros,
+    type DetalheReceita, type Telefone, type Situacao,
+} from '@/api/receita';
 import { formatarTelefone } from '@/formatadores';
 import CabecalhoApp from '@/componentes/CabecalhoApp.vue';
 
@@ -21,6 +24,77 @@ const carregando = ref(true);
 const enviando = ref(false);
 const erro = ref<string | null>(null);
 const convenioEscolhido = ref<number | null>(null);
+
+// Situação de cada número, por número. A API devolve o número normalizado
+// (o ERP tem telefone sem DDI), e é ele que vai no envio.
+const situacoes = ref<Record<string, Situacao>>({});
+const numeroEnvio = ref<Record<string, string>>({});
+const validando = ref(false);
+
+const avulso = ref('');
+const avulsoAberto = ref(false);
+const validandoAvulso = ref(false);
+
+const SELO: Record<Situacao, string> = {
+    tem: 'tem WhatsApp',
+    nao_tem: 'sem WhatsApp',
+    desconhecido: 'não checado',
+    invalido: 'número inválido',
+};
+
+const escolhidoSemWhatsapp = computed(
+    () => escolhido.value !== null && situacoes.value[escolhido.value] === 'nao_tem'
+);
+
+function guardar(resultados: { numero: string; situacao: Situacao; numeroEnvio: string | null }[]) {
+    for (const r of resultados) {
+        situacoes.value[r.numero] = r.situacao;
+        if (r.numeroEnvio) numeroEnvio.value[r.numero] = r.numeroEnvio;
+    }
+}
+
+// A validação não bloqueia a tela: ela chega depois e só acrescenta selo.
+// Se a API estiver fora, todos ficam "não checado" e o envio continua.
+async function checarTelefones() {
+    if (telefones.value.length === 0) return;
+    validando.value = true;
+    try {
+        guardar(await validarNumeros(telefones.value.map((t) => t.numero)));
+        // Com um número que tem WhatsApp e o atual sem, troca a sugestão.
+        const comWhats = telefones.value.find((t) => situacoes.value[t.numero] === 'tem');
+        if (comWhats && situacoes.value[escolhido.value ?? ''] !== 'tem') {
+            escolhido.value = comWhats.numero;
+        }
+    } catch {
+        // Sem selo é o estado anterior do sistema; não é motivo de alarme.
+    } finally {
+        validando.value = false;
+    }
+}
+
+async function usarAvulso() {
+    const numero = avulso.value.trim();
+    if (numero === '') return;
+    validandoAvulso.value = true;
+    try {
+        const [resultado] = await validarNumeros([numero]);
+        if (resultado.situacao === 'invalido') {
+            toast.add({ severity: 'warn', summary: 'Número inválido', detail: 'Verifique o DDD.', life: 4000 });
+            return;
+        }
+        if (!telefones.value.some((t) => t.numero === numero)) {
+            telefones.value = [...telefones.value, { rotulo: 'digitado', numero }];
+        }
+        guardar([resultado]);
+        escolhido.value = numero;
+        avulso.value = '';
+        avulsoAberto.value = false;
+    } catch {
+        toast.add({ severity: 'error', summary: 'Não foi possível validar', life: 4000 });
+    } finally {
+        validandoAvulso.value = false;
+    }
+}
 
 const modalidade = computed(() => {
     if (!detalhe.value) return '';
@@ -46,6 +120,7 @@ onMounted(async () => {
     } finally {
         carregando.value = false;
     }
+    checarTelefones();
 });
 
 async function enviar() {
@@ -54,7 +129,9 @@ async function enviar() {
     try {
         await enviarAviso({
             codigoReceita: codigo,
-            telefoneEscolhido: escolhido.value,
+            // O número que a API normalizou, quando existe: o ERP guarda
+            // telefone sem DDI e é esse que o WhatsApp reconhece.
+            telefoneEscolhido: numeroEnvio.value[escolhido.value] ?? escolhido.value,
             mensagem: texto.value,
             nomeCliente: detalhe.value.dadosCliente.nome,
             convenioTs: convenioEscolhido.value ?? undefined,
@@ -115,7 +192,10 @@ async function enviar() {
                 Esta receita já foi avisada. Enviar de novo repete a mensagem para o cliente.
             </p>
 
-            <h2>Para qual número?</h2>
+            <h2>
+                Para qual número?
+                <span v-if="validando" class="checando">checando no WhatsApp…</span>
+            </h2>
             <p v-if="telefones.length === 0" class="vazio">
                 Este cliente não tem telefone cadastrado no sistema.
             </p>
@@ -129,7 +209,41 @@ async function enviar() {
             >
                 <span class="dados">{{ formatarTelefone(telefone.numero) }}</span>
                 <span class="rotulo">{{ telefone.rotulo }}</span>
+                <span
+                    v-if="situacoes[telefone.numero]"
+                    :class="['selo', situacoes[telefone.numero]]"
+                >{{ SELO[situacoes[telefone.numero]] }}</span>
             </button>
+
+            <button
+                v-if="!avulsoAberto"
+                type="button"
+                class="outro"
+                @click="avulsoAberto = true"
+            >+ usar outro número</button>
+
+            <div v-else class="linha-avulso">
+                <input
+                    v-model="avulso"
+                    type="tel"
+                    inputmode="numeric"
+                    placeholder="44 99113-5801"
+                    class="campo-avulso dados"
+                    @keyup.enter="usarAvulso"
+                >
+                <button
+                    type="button"
+                    class="checar"
+                    :disabled="avulso.trim() === '' || validandoAvulso"
+                    @click="usarAvulso"
+                >{{ validandoAvulso ? 'Checando…' : 'Checar' }}</button>
+                <button type="button" class="cancelar" @click="avulsoAberto = false">cancelar</button>
+            </div>
+
+            <p v-if="escolhidoSemWhatsapp" class="alerta-numero">
+                Este número não tem WhatsApp. O envio vai falhar — escolha outro
+                ou digite um número novo.
+            </p>
 
             <h2>Mensagem</h2>
             <Textarea v-model="texto" auto-resize rows="8" class="mensagem" />
@@ -171,7 +285,31 @@ h2 {
     border-radius: var(--raio); font: inherit; color: inherit; cursor: pointer;
 }
 .telefone.ativo { border-color: var(--cor-marca); border-width: 2px; }
-.rotulo { color: var(--cor-texto-suave); font-size: 0.8rem; }
+.rotulo { color: var(--cor-texto-suave); font-size: 0.8rem; margin-left: auto; margin-right: 10px; }
+.checando { text-transform: none; letter-spacing: 0; font-weight: 400; margin-left: 8px; }
+
+.selo { font-size: 0.72rem; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+.selo.tem { background: #dcfce7; color: #166534; }
+.selo.nao_tem { background: #fee2e2; color: #991b1b; }
+.selo.desconhecido { background: var(--cor-borda); color: var(--cor-texto-suave); }
+.selo.invalido { background: #fef3c7; color: #92400e; }
+
+.outro { background: none; border: 0; color: var(--cor-marca); font: inherit; cursor: pointer; padding: 6px 0; }
+.linha-avulso { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+.campo-avulso {
+    flex: 1; min-width: 0; padding: 13px 12px; font-size: 0.95rem; color: var(--cor-texto);
+    border: 1px solid var(--cor-borda); border-radius: var(--raio); background: var(--cor-superficie);
+}
+.checar {
+    padding: 13px 18px; font: inherit; font-weight: 600;
+    background: var(--cor-marca); color: #fff; border: 0; border-radius: var(--raio); cursor: pointer;
+}
+.checar:disabled { background: var(--cor-pendente); color: var(--cor-texto-suave); }
+.cancelar { background: none; border: 0; color: var(--cor-texto-suave); font: inherit; cursor: pointer; }
+.alerta-numero {
+    margin: 10px 0 0; padding: 10px 12px; font-size: 0.85rem;
+    background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: var(--raio);
+}
 .mensagem { width: 100%; }
 .convenios { margin: 16px 0; }
 .rotulo-convenio {

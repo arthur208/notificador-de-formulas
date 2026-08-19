@@ -115,7 +115,7 @@ async function guardar() {
                     v-model="cabecalho"
                     type="text"
                     class="campo-cabecalho"
-                    placeholder="Farmácia Bioessência"
+                    placeholder="Farmácia Bioessência Informa:"
                     @input="salvo = false"
                 >
                 <span :class="['contador', { estourou: longoDemais }]">
@@ -125,7 +125,7 @@ async function guardar() {
             <p class="dica">
                 <template v-if="botoes.length > 0">
                     Vai no campo de título da mensagem com botões. Vazio, sai
-                    <span class="exemplo">Farmácia Bioessência</span>.
+                    <span class="exemplo">Farmácia Bioessência Informa:</span>.
                 </template>
                 <template v-else>
                     Sem botões, o WhatsApp não tem campo de cabeçalho: ele entra como

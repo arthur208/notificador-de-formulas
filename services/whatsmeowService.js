@@ -92,6 +92,25 @@ function enviarTexto({ numero, mensagem }) {
     return postarNaApi('/api/v1/messages/whatsmeow/send', { number: numero, body: mensagem });
 }
 
+// Pergunta à API se o número existe no WhatsApp. Devolve também o número
+// normalizado: "44991135801" volta como "554491135801" — o ERP tem muito
+// telefone sem DDI, e é essa forma que deve ser usada no envio.
+async function validarNumero(numero) {
+    const [token, canal] = await Promise.all([obterAccessToken(), carregarCanal()]);
+    const { data } = await http().post(
+        '/api/v1/contacts/validate-number',
+        { number: numero, channel: 'whatsmeow', token: canal.token },
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    const info = data?.data ?? {};
+    return {
+        existe: info.existsInWhatsapp === true,
+        numeroFormatado: info.numberFormatted || numero,
+        nomeVerificado: info.verifiedName || null,
+    };
+}
+
 function enviarBotoes({ numero, titulo, corpo, botoes }) {
     validarBotoes(botoes);
     return postarNaApi('/api/v1/messages/whatsmeow/buttons', {
@@ -99,4 +118,4 @@ function enviarBotoes({ numero, titulo, corpo, botoes }) {
     });
 }
 
-module.exports = { enviarTexto, enviarBotoes, validarBotoes, _limparCacheToken };
+module.exports = { enviarTexto, enviarBotoes, validarBotoes, validarNumero, _limparCacheToken };
