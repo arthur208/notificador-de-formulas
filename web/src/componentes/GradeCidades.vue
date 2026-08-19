@@ -157,6 +157,9 @@ select, input {
     border: 1px solid var(--cor-borda); border-radius: 6px; background: var(--cor-fundo);
 }
 input:disabled { background: var(--cor-borda); color: var(--cor-texto-suave); }
+/* Sem isto o input[type=number] usa a largura intrínseca dele (196px),
+   estoura o rótulo de 130px e passa por baixo da caixa ao lado. */
+.formulario select, .formulario input:not([type='checkbox']) { width: 100%; min-width: 0; }
 
 /* Caixa da mesma altura dos campos: solto, o checkbox de 13px ficava
    flutuando ao lado de campos de 44px. */

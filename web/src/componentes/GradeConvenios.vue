@@ -213,6 +213,8 @@ select, input {
 }
 select { min-width: 260px; }
 input[type='checkbox'] { accent-color: var(--cor-marca); width: 16px; height: 16px; }
+/* O input[type=number] usa a largura intrínseca dele e estoura o rótulo. */
+.formulario input:not([type='checkbox']) { width: 100%; min-width: 0; }
 .adicionar {
     padding: 11px 22px; font: inherit; font-weight: 600;
     background: var(--cor-marca); color: #fff; border: 0; border-radius: 6px;
