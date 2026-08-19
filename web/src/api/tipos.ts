@@ -1,3 +1,6 @@
+export type Modalidade =
+    | 'retirada' | 'entrega' | 'entrega_sem_prazo' | 'entrega_local' | 'convenio';
+
 export type Conferida = {
     codigoRec: number;
     nome: string;
@@ -6,6 +9,10 @@ export type Conferida = {
     completa: boolean;
     hora: string | null;
     jaAvisado: boolean;
+    // Ausentes quando a classificação falha — a lista continua servindo.
+    modalidade?: Modalidade;
+    detalhe?: string | null;
+    semPrazo?: boolean;
 };
 
 export type RespostaConferidas = {

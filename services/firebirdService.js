@@ -248,10 +248,63 @@ async function conveniosDoCliente(codigoReceita) {
     }));
 }
 
+// Entrega e cidade de várias receitas de uma vez. Uma consulta por receita
+// custaria 2 idas ao banco vezes 80 receitas só para desenhar a lista.
+async function entregasDasReceitas(codigos) {
+    const mapa = new Map();
+    if (!Array.isArray(codigos) || codigos.length === 0) return mapa;
+
+    for (const lote of emLotes(codigos, TAMANHO_LOTE_IN)) {
+        const sql = `
+            SELECT RR.CODIGOREC, RO.CODIGOCID,
+                   CAST(C.NOMECID AS VARCHAR(120) CHARACTER SET WIN1252) AS NOMECID
+            FROM RECROMANEIO RR
+            JOIN ROMANEIO RO ON RO.CODIGOR = RR.CODIGOR
+            LEFT JOIN CIDADES C ON C.CODIGOCID = RO.CODIGOCID
+            WHERE RR.CODIGOREC IN (${listaInteirosSegura(lote)})
+        `;
+        for (const linha of await queryFb(sql, [])) {
+            mapa.set(Number(linha.CODIGOREC), {
+                codigoCid: linha.CODIGOCID === null ? null : Number(linha.CODIGOCID),
+                cidade: toTitleCase(decodeFBString(linha.NOMECID)),
+            });
+        }
+    }
+    return mapa;
+}
+
+// Convênios vinculados a várias receitas de uma vez.
+async function conveniosDasReceitas(codigos) {
+    const mapa = new Map();
+    if (!Array.isArray(codigos) || codigos.length === 0) return mapa;
+
+    for (const lote of emLotes(codigos, TAMANHO_LOTE_IN)) {
+        const sql = `
+            SELECT DISTINCT RC.CODIGOREC, TS.CODIGOTS,
+                   CAST(TS.NOME AS VARCHAR(120) CHARACTER SET WIN1252) AS NOME
+            FROM RECCLIENTE RC
+            JOIN PESSOACONVENIO PC ON PC.CODIGOPES = RC.CODIGOPES
+            JOIN TABELASIMPLES TS ON TS.CODIGOTS = PC.CODIGOCONVENIO AND TS.TIPO = 'CONVENIO'
+            WHERE RC.CODIGOREC IN (${listaInteirosSegura(lote)})
+        `;
+        for (const linha of await queryFb(sql, [])) {
+            const codigo = Number(linha.CODIGOREC);
+            if (!mapa.has(codigo)) mapa.set(codigo, []);
+            mapa.get(codigo).push({
+                codigoTs: Number(linha.CODIGOTS),
+                nome: decodeFBString(linha.NOME),
+            });
+        }
+    }
+    return mapa;
+}
+
 module.exports = {
     getRecipeData,
     getDeliveryData,
     getReceitasConferidas,
+    entregasDasReceitas,
+    conveniosDasReceitas,
     contarFormulas,
     cidadesComEntregaRecente,
     listarConvenios,

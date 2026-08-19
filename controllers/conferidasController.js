@@ -1,6 +1,7 @@
 const firebirdService = require('../services/firebirdService');
 const mongoService = require('../services/mongoService');
 const { validarDataISO, hojeISO } = require('../utils/datas');
+const modalidadeService = require('../services/modalidadeService');
 
 // Mais recente primeiro. Receita sem hora vai para o fim.
 function porHoraDesc(a, b) {
@@ -33,8 +34,16 @@ async function getConferidas(req, res) {
 
     try {
         const receitas = await firebirdService.getReceitasConferidas(data);
-        const avisados = await mongoService.buscarAvisados(receitas.map((r) => r.codigoRec));
-        res.json(montarResposta(data, receitas, avisados));
+        const [avisados, comModalidade] = await Promise.all([
+            mongoService.buscarAvisados(receitas.map((r) => r.codigoRec)),
+            // Falhar aqui não pode derrubar a lista: sem o selo ela ainda
+            // serve, era assim até ontem.
+            modalidadeService.anotar(receitas).catch((erro) => {
+                console.error('Não foi possível classificar as receitas:', erro.message);
+                return receitas;
+            }),
+        ]);
+        res.json(montarResposta(data, comModalidade, avisados));
     } catch (erro) {
         console.error('Erro na rota /conferidas:', erro);
         res.status(500).json({ erro: 'Não foi possível carregar as receitas conferidas.' });
