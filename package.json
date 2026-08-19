@@ -6,7 +6,9 @@
     "start": "node index.js",
     "test": "node --test",
     "build": "npm --prefix web run build",
-    "dev:web": "npm --prefix web run dev"
+    "dev:web": "npm --prefix web run dev",
+    "verificar": "node scripts/verificar-ambiente.js",
+    "deploy": "bash scripts/deploy.sh"
   },
   "keywords": [],
   "author": "",
@@ -18,7 +20,6 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "mongodb": "^6.20.0",
-    "node-firebird": "^1.1.9",
-    "pg": "^8.12.0"
+    "node-firebird": "^1.1.9"
   }
 }
