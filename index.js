@@ -19,6 +19,7 @@ const PORT = config.porta;
 // trust proxy fica ligado para o req.ip do log e do freio refletirem o
 // cliente quando houver proxy na frente.
 app.set('trust proxy', 1);
+app.use(require('./middleware/cabecalhosSeguranca').cabecalhosSeguranca);
 app.use(express.json());
 app.use(require('./middleware/autenticacao').carregarUsuario);
 app.use('/auth', require('./routes/auth'));

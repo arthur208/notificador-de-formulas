@@ -228,6 +228,11 @@ O log guarda `telefoneDigitado`, `telefoneEnviado` e `idMensagem`.
 cai para texto sozinho e marca `botoesRecusados` no log. Para desligar de vez,
 `BOTOES_DISPONIVEIS = false` em `services/templateService.js`.
 
+**O que protege a API** — toda rota exige sessão (401 sem cookie) e as de
+configuração exigem papel (403 para atendente). O cookie é HttpOnly,
+SameSite=Strict e Secure sob `NODE_ENV=production`; o token tem 256 bits e
+vale 12h. Os cabeçalhos de segurança saem em `middleware/cabecalhosSeguranca.js`.
+
 **Quem controla o acesso** — o login, e só ele. A whitelist de IP saiu em
 19/08/2026: liberava a faixa `192.168.`/`10.` inteira e lia o IP de um
 cabeçalho que o cliente controla, então não segurava ninguém. O login tem
