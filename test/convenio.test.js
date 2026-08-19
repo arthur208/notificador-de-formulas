@@ -45,7 +45,7 @@ test('sem variáveis livres não quebra', () => {
 });
 
 describe('escolha da modalidade no envio', () => {
-    const { escolherModalidade } = require('../controllers/messageController');
+    const { escolherModalidade } = require('../services/mensagemService');
 
     test('sem entrega é retirada na loja', () => {
         assert.strictEqual(escolherModalidade(false, null), 'retirada');

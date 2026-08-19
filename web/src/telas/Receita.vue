@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import Textarea from 'primevue/textarea';
 import Skeleton from 'primevue/skeleton';
 import {
-    buscarReceita, enviarAviso, listarTelefones, validarNumeros,
+    buscarReceita, buscarMensagem, enviarAviso, listarTelefones, validarNumeros,
     type DetalheReceita, type Telefone, type Situacao,
 } from '@/api/receita';
 import { formatarTelefone } from '@/formatadores';
@@ -24,6 +24,13 @@ const carregando = ref(true);
 const enviando = ref(false);
 const erro = ref<string | null>(null);
 const convenioEscolhido = ref<number | null>(null);
+
+// Enquanto a atendente não digitar, o texto é só uma prévia do template.
+// Nesse caso o envio vai com a mensagem vazia e o servidor monta a versão
+// final — assim o que sai é sempre o template vigente, com a modalidade
+// certa. Se ela editar, aí sim manda o que está na tela.
+const editado = ref(false);
+const faltando = ref<string[] | null>(null);
 
 // Situação de cada número, por número. A API devolve o número normalizado
 // (o ERP tem telefone sem DDI), e é ele que vai no envio.
@@ -109,7 +116,8 @@ onMounted(async () => {
         detalhe.value = dados;
         telefones.value = listarTelefones(dados.dadosCliente.telefones);
         escolhido.value = telefones.value[0]?.numero ?? null;
-        texto.value = dados.mensagemSugerida;
+        texto.value = dados.mensagemSugerida ?? '';
+        faltando.value = dados.faltando;
         // Sugere marcado quando há exatamente um. Com dois, a tela pergunta:
         // 17 clientes têm dois convênios e não cabe ao sistema escolher.
         if (dados.conveniosSugeridos?.length === 1) {
@@ -123,6 +131,20 @@ onMounted(async () => {
     checarTelefones();
 });
 
+// Convênio troca o template inteiro; a prévia tem que acompanhar, senão
+// a atendente lê uma mensagem e o cliente recebe outra.
+watch(convenioEscolhido, async (valor) => {
+    if (editado.value) return;
+    try {
+        const { texto: novo } = await buscarMensagem(codigo, valor);
+        texto.value = novo;
+        faltando.value = null;
+    } catch (e) {
+        faltando.value = ['convênio'];
+        texto.value = '';
+    }
+});
+
 async function enviar() {
     if (!escolhido.value || !detalhe.value) return;
     enviando.value = true;
@@ -132,7 +154,7 @@ async function enviar() {
             // O número que a API normalizou, quando existe: o ERP guarda
             // telefone sem DDI e é esse que o WhatsApp reconhece.
             telefoneEscolhido: numeroEnvio.value[escolhido.value] ?? escolhido.value,
-            mensagem: texto.value,
+            mensagem: editado.value ? texto.value : '',
             nomeCliente: detalhe.value.dadosCliente.nome,
             convenioTs: convenioEscolhido.value ?? undefined,
         });
@@ -246,13 +268,27 @@ async function enviar() {
             </p>
 
             <h2>Mensagem</h2>
-            <Textarea v-model="texto" auto-resize rows="8" class="mensagem" />
+            <Textarea
+                v-model="texto"
+                auto-resize
+                rows="8"
+                class="mensagem"
+                :disabled="faltando !== null"
+                @input="editado = true"
+            />
+            <p v-if="faltando" class="alerta-numero">
+                O template desta modalidade usa {{ faltando.join(', ') }}, que não
+                está disponível aqui. Ajuste em Configurações — sem isso o envio falha.
+            </p>
+            <p v-else-if="!editado" class="dica-texto">
+                Texto do template. Editando aqui, só esta mensagem muda.
+            </p>
 
             <div class="rodape">
                 <button
                     type="button"
                     class="enviar"
-                    :disabled="!escolhido || enviando || texto.trim() === ''"
+                    :disabled="!escolhido || enviando || faltando !== null || texto.trim() === ''"
                     @click="enviar"
                 >
                     {{ enviando ? 'Enviando…' : 'Enviar aviso' }}
@@ -311,6 +347,7 @@ h2 {
     background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: var(--raio);
 }
 .mensagem { width: 100%; }
+.dica-texto { margin: 6px 0 0; font-size: 0.78rem; color: var(--cor-texto-suave); }
 .convenios { margin: 16px 0; }
 .rotulo-convenio {
     margin: 0 0 8px; font-size: 0.78rem; text-transform: uppercase;

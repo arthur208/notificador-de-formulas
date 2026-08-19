@@ -4,7 +4,8 @@ export type Telefone = { rotulo: string; numero: string };
 
 export type DetalheReceita = {
     dadosCliente: { nome: string; telefones: Record<string, string | null> };
-    mensagemSugerida: string;
+    mensagemSugerida: string | null;
+    faltando: string[] | null;
     jaEnviado: boolean;
     isDelivery: boolean;
     deliveryAddress: { cidade?: string; estado?: string } | null;
@@ -36,6 +37,14 @@ export async function validarNumeros(
 
 export function buscarReceita(codigo: number | string): Promise<DetalheReceita> {
     return buscarJson<DetalheReceita>(`/api/cliente/${encodeURIComponent(String(codigo))}`);
+}
+
+export function buscarMensagem(
+    codigo: number | string,
+    convenioTs?: number | null
+): Promise<{ texto: string; modalidade: string }> {
+    const consulta = convenioTs ? `?convenioTs=${convenioTs}` : '';
+    return buscarJson(`/api/cliente/${encodeURIComponent(String(codigo))}/mensagem${consulta}`);
 }
 
 export async function enviarAviso(dados: {

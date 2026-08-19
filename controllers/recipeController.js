@@ -1,7 +1,8 @@
 const firebirdService = require('../services/firebirdService');
 const mongoService = require('../services/mongoService');
-const { getSaudacao } = require('../utils/helpers');
 const { montarEndereco } = require('../utils/endereco');
+const { montarMensagem } = require('../services/mensagemService');
+const { VariavelAusenteError } = require('../utils/template');
 const convenioService = require('../services/convenioService');
 
 async function getCliente(req, res) {
@@ -32,27 +33,22 @@ async function getCliente(req, res) {
             }
         }
 
-        const saudacao = getSaudacao();
-        let mensagemSugerida;
-
-        if (isDelivery) {
-            const enderecoTexto = montarEndereco(deliveryAddress) || 'Endereço não encontrado.';
-            mensagemSugerida =
-                `${saudacao}, ${clienteData.nome}! 👋\n\n` +
-                `A Farmácia Bioessência informa: Sua receita (Nº ${codigoReceita}) está pronta ` +
-                `e será enviada para entrega. 🚚✅\n\n` +
-                `Endereço de destino:\n${enderecoTexto}\n\nFicamos à disposição!`;
-        } else {
-            mensagemSugerida =
-                `${saudacao}, ${clienteData.nome}! 👋\n\n` +
-                `A Farmácia Bioessência informa: Sua receita (Nº ${codigoReceita}) está pronta ` +
-                `para retirada em nossa loja. 💊✅\n\n` +
-                `Ficamos à disposição e aguardamos sua visita!`;
+        // A sugestão sai do MESMO montador do envio. Antes vinha de texto
+        // fixo aqui, então o template editado em Configurações não chegava
+        // ao cliente: a tela mandava este texto, e o servidor o respeitava.
+        let mensagemSugerida = null;
+        let faltando = null;
+        try {
+            mensagemSugerida = (await montarMensagem(codigoReceita, clienteData.nome)).texto;
+        } catch (erro) {
+            if (!(erro instanceof VariavelAusenteError)) throw erro;
+            faltando = erro.faltando;
         }
 
         res.json({
             dadosCliente: clienteData,
             mensagemSugerida,
+            faltando,
             jaEnviado: logSucessoExistente !== null,
             isDelivery,
             deliveryAddress,
@@ -64,4 +60,29 @@ async function getCliente(req, res) {
     }
 }
 
-module.exports = { getCliente };
+// Só o texto, para a tela reagir quando a atendente marca um convênio:
+// o convênio troca o template inteiro, e a prévia precisa acompanhar.
+// O nome vem do banco, não do cliente HTTP — é ele que entra na mensagem.
+async function getMensagem(req, res) {
+    const codigoReceita = req.params.codigo;
+    const convenioTs = req.query.convenioTs ? Number(req.query.convenioTs) : undefined;
+
+    try {
+        const clienteData = await firebirdService.getRecipeData(codigoReceita);
+        if (!clienteData) return res.status(404).json({ erro: 'Cliente não encontrado.' });
+
+        const montada = await montarMensagem(codigoReceita, clienteData.nome, convenioTs);
+        res.json({ texto: montada.texto, modalidade: montada.modalidade });
+    } catch (erro) {
+        if (erro instanceof VariavelAusenteError) {
+            return res.status(422).json({
+                erro: `O template está incompleto: ${erro.faltando.join(', ')}.`,
+                faltando: erro.faltando,
+            });
+        }
+        console.error('Erro ao montar a prévia:', erro);
+        res.status(500).json({ erro: 'Não foi possível montar a mensagem.' });
+    }
+}
+
+module.exports = { getCliente, getMensagem };

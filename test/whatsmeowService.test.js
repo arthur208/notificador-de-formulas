@@ -40,7 +40,7 @@ test('todo botão precisa de title', () => {
 });
 
 describe('cabeçalho na mensagem sem botões', () => {
-    const { comCabecalho } = require('../controllers/messageController');
+    const { comCabecalho } = require('../services/mensagemService');
 
     test('entra como primeira linha em negrito', () => {
         assert.strictEqual(
