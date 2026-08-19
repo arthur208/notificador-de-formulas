@@ -33,16 +33,29 @@ const EXEMPLO: Record<string, string> = {
     nome: 'Gracileia Rosa Tomiello',
     codigo: '441433',
     qtdFormulas: '4',
-    endereco: 'Rua das Palmeiras, 123 - Centro - Loanda/PR',
-    cidade: 'Loanda',
-    dias: '2 dias úteis',
+    endereco: 'Rua das Palmeiras, 123 - Centro - Querência do Norte/PR',
+    cidade: 'Querência do Norte',
+    dias: '3 dias úteis',
     local: 'na Farmácia Porto Rico',
     horario: 'Seg a Sex, 8h às 18h',
 };
 
+// Entrega local é a cidade da própria farmácia; qualquer outra cidade no
+// exemplo faria a prévia mentir sobre quando a modalidade é usada.
+const EXEMPLO_LOCAL: Record<string, string> = {
+    endereco: 'Rua das Palmeiras, 123 - Centro - Loanda/PR',
+    cidade: 'Loanda',
+};
+
+const exemplos = computed(() =>
+    props.template.modalidade === 'entrega_local'
+        ? { ...EXEMPLO, ...EXEMPLO_LOCAL }
+        : EXEMPLO
+);
+
 function preencher(texto: string): string {
     return (texto ?? '').replace(/\{\{\s*([a-zA-Z][a-zA-Z0-9_]*)\s*\}\}/g,
-        (achado, nome) => EXEMPLO[nome] ?? achado);
+        (achado, nome) => exemplos.value[nome] ?? achado);
 }
 
 const textoPrevia = computed(() => preencher(corpo.value));

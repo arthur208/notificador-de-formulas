@@ -28,8 +28,20 @@ const TEMPLATES_PADRAO = {
         corpo:
             '{{saudacao}}, {{nome}}! 👋\n\n' +
             'A Farmácia Bioessência informa: Sua receita (Nº {{codigo}}) está pronta ' +
-            'e será enviada para entrega. 🚚✅\n\n' +
+            'e será enviada para entrega em {{cidade}}. 🚚✅\n\n' +
+            'Previsão de entrega: {{dias}}.\n\n' +
             'Endereço de destino:\n{{endereco}}\n\nFicamos à disposição!',
+    },
+    // Cidade sem prazo cadastrado. Não promete data — é o único texto de
+    // entrega que pode sair para as 47 cidades ainda não cadastradas.
+    entrega_sem_prazo: {
+        cabecalho: CABECALHO_PADRAO,
+        corpo:
+            '{{saudacao}}, {{nome}}! 👋\n\n' +
+            'A Farmácia Bioessência informa: Sua receita (Nº {{codigo}}) está pronta ' +
+            'e será enviada para entrega. 🚚✅\n\n' +
+            'Endereço de destino:\n{{endereco}}\n\n' +
+            'Assim que sair para entrega avisamos por aqui. Ficamos à disposição!',
     },
     entrega_local: {
         cabecalho: CABECALHO_PADRAO,
@@ -54,7 +66,11 @@ const VARIAVEIS_GLOBAIS = ['saudacao', 'nome', 'codigo', 'qtdFormulas'];
 const VARIAVEIS_POR_MODALIDADE = {
     retirada: [],
     entrega: ['endereco', 'cidade', 'dias'],
-    entrega_local: ['endereco', 'cidade', 'dias'],
+    // Sem 'dias' de propósito: esta modalidade existe justamente porque a
+    // cidade não tem prazo. Oferecer a variável só criaria o 422.
+    entrega_sem_prazo: ['endereco', 'cidade'],
+    // Entrega local sai no mesmo dia — o prazo cadastrado é ignorado.
+    entrega_local: ['endereco', 'cidade'],
     convenio: ['local', 'dias'],
 };
 

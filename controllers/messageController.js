@@ -15,6 +15,16 @@ const convenioService = require('../services/convenioService');
 // entrega/retirada. Justificativa do cliente: "se a pessoa é de Porto Rico
 // e temos entrega em Porto Rico, mas ela pediu no convênio, entregamos
 // no convênio".
+// Cidade sem cadastro não ganha prazo genérico — a mensagem sai sem a
+// promessa em vez de inventar uma. Como o template não tem condicional,
+// isso exige um texto próprio: com {{dias}} no corpo, receita de cidade
+// não cadastrada seria recusada com 422 em vez de sair sem o prazo.
+function escolherModalidade(isDelivery, prazo) {
+    if (!isDelivery) return 'retirada';
+    if (!prazo) return 'entrega_sem_prazo';
+    return prazo.local ? 'entrega_local' : 'entrega';
+}
+
 async function montarMensagem(codigoReceita, nomeCliente, convenioTs) {
     const comuns = {
         saudacao: getSaudacao(),
@@ -39,9 +49,9 @@ async function montarMensagem(codigoReceita, nomeCliente, convenioTs) {
     }
 
     const { isDelivery, deliveryAddress } = await firebirdService.getDeliveryData(codigoReceita);
-    const modalidade = isDelivery ? 'entrega' : 'retirada';
     const prazo = isDelivery ? await cidadeService.resolverPrazo(deliveryAddress?.codigoCid) : null;
-    const template = await templateService.carregarTemplate(prazo?.templateId || modalidade);
+    const modalidade = escolherModalidade(isDelivery, prazo);
+    const template = await templateService.carregarTemplate(modalidade);
 
     const valores = {
         ...comuns,
@@ -167,4 +177,4 @@ async function sendMessage(req, res) {
     }
 }
 
-module.exports = { sendMessage, comCabecalho };
+module.exports = { sendMessage, comCabecalho, escolherModalidade };

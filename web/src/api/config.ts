@@ -1,6 +1,6 @@
 import { buscarJson } from './cliente';
 
-export type Modalidade = 'retirada' | 'entrega' | 'entrega_local' | 'convenio';
+export type Modalidade = 'retirada' | 'entrega' | 'entrega_sem_prazo' | 'entrega_local' | 'convenio';
 export type Template = {
     modalidade: Modalidade; cabecalho: string; corpo: string;
     botoes?: BotaoDef[]; versao?: number;

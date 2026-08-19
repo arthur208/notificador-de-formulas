@@ -34,8 +34,19 @@ async function gravarCanal(req, res) {
 }
 
 async function lerTemplates(_req, res) {
+    // Uma entrada por modalidade conhecida, salva ou não: modalidade nova
+    // não tem documento no Mongo e sumiria da tela até alguém gravar.
+    const salvos = await templateService.listarTemplates();
+    const porModalidade = new Map(salvos.map((t) => [t.modalidade, t]));
+
+    const templates = Object.keys(templateService.VARIAVEIS_POR_MODALIDADE).map(
+        (modalidade) => porModalidade.get(modalidade) ?? {
+            modalidade, ...templateService.TEMPLATES_PADRAO[modalidade], botoes: [],
+        }
+    );
+
     res.json({
-        templates: await templateService.listarTemplates(),
+        templates,
         variaveis: {
             globais: templateService.VARIAVEIS_GLOBAIS,
             porModalidade: templateService.VARIAVEIS_POR_MODALIDADE,

@@ -46,3 +46,17 @@ test('cabeçalho vazio ou ausente não inventa variável', () => {
     assert.deepStrictEqual(validarTemplate('retirada', 'Pronta.', [], [], ''), []);
     assert.deepStrictEqual(validarTemplate('retirada', 'Pronta.', [], [], null), []);
 });
+
+test('entrega sem prazo não oferece a variável dias', () => {
+    assert.ok(!VARIAVEIS_POR_MODALIDADE.entrega_sem_prazo.includes('dias'));
+    const invalidas = validarTemplate('entrega_sem_prazo', 'Chega em {{dias}}.');
+    assert.deepStrictEqual(invalidas, ['dias']);
+});
+
+test('entrega local também não promete prazo', () => {
+    assert.ok(!VARIAVEIS_POR_MODALIDADE.entrega_local.includes('dias'));
+});
+
+test('entrega com prazo aceita dias', () => {
+    assert.deepStrictEqual(validarTemplate('entrega', 'Previsão: {{dias}}.'), []);
+});

@@ -1,4 +1,4 @@
-const { test } = require('node:test');
+const { test, describe } = require('node:test');
 const assert = require('node:assert');
 const { variaveisDoConvenio } = require('../services/convenioService');
 
@@ -42,4 +42,26 @@ test('configuração nula devolve objeto vazio', () => {
 test('sem variáveis livres não quebra', () => {
     const valores = variaveisDoConvenio({ nomeExibicao: 'no Sindicato', dias: 5 });
     assert.strictEqual(valores.local, 'no Sindicato');
+});
+
+describe('escolha da modalidade no envio', () => {
+    const { escolherModalidade } = require('../controllers/messageController');
+
+    test('sem entrega é retirada na loja', () => {
+        assert.strictEqual(escolherModalidade(false, null), 'retirada');
+    });
+
+    test('cidade marcada como local usa o texto de entrega local', () => {
+        assert.strictEqual(escolherModalidade(true, { dias: 1, local: true }), 'entrega_local');
+    });
+
+    test('cidade com prazo usa o texto que promete a data', () => {
+        assert.strictEqual(escolherModalidade(true, { dias: 3, local: false }), 'entrega');
+    });
+
+    // Sem este caminho, receita de cidade não cadastrada seria recusada
+    // com 422 por causa do {{dias}} no corpo da entrega.
+    test('cidade sem cadastro cai no texto que não promete data', () => {
+        assert.strictEqual(escolherModalidade(true, null), 'entrega_sem_prazo');
+    });
 });

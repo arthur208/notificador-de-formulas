@@ -21,10 +21,13 @@ const erro = ref<string | null>(null);
 
 // Ordem e nomes fixos: o Mongo devolve na ordem de inserção, e
 // "entrega_local" com underscore não é nome para mostrar a ninguém.
-const ORDEM: Modalidade[] = ['retirada', 'entrega', 'entrega_local', 'convenio'];
+const ORDEM: Modalidade[] = [
+    'retirada', 'entrega', 'entrega_sem_prazo', 'entrega_local', 'convenio',
+];
 const NOME_MODALIDADE: Record<string, string> = {
     retirada: 'Retirada na loja',
-    entrega: 'Entrega',
+    entrega: 'Entrega com prazo',
+    entrega_sem_prazo: 'Entrega sem prazo',
     entrega_local: 'Entrega local',
     convenio: 'Convênio',
 };
