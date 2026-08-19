@@ -1,10 +1,18 @@
 import { buscarJson } from './cliente';
+import type { BotaoDef } from './config';
 
 export type Telefone = { rotulo: string; numero: string };
 
+export type Previa = {
+    texto: string;
+    cabecalho: string;
+    botoes: BotaoDef[];
+    modalidade: string;
+};
+
 export type DetalheReceita = {
     dadosCliente: { nome: string; telefones: Record<string, string | null> };
-    mensagemSugerida: string | null;
+    previa: Previa | null;
     faltando: string[] | null;
     jaEnviado: boolean;
     isDelivery: boolean;
@@ -42,15 +50,16 @@ export function buscarReceita(codigo: number | string): Promise<DetalheReceita> 
 export function buscarMensagem(
     codigo: number | string,
     convenioTs?: number | null
-): Promise<{ texto: string; modalidade: string }> {
+): Promise<Previa> {
     const consulta = convenioTs ? `?convenioTs=${convenioTs}` : '';
     return buscarJson(`/api/cliente/${encodeURIComponent(String(codigo))}/mensagem${consulta}`);
 }
 
+// Sem `mensagem`: quem monta o texto final é o servidor, com o template
+// vigente. A tela só mostra a prévia — não há mais o que enviar daqui.
 export async function enviarAviso(dados: {
     codigoReceita: number;
     telefoneEscolhido: string;
-    mensagem: string;
     nomeCliente: string;
     convenioTs?: number;
 }): Promise<void> {

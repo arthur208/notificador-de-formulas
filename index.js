@@ -26,6 +26,18 @@ app.use(express.static('public')); // 4º: Serve os arquivos estáticos (index.h
 app.use('/api/config', require('./routes/config'));
 app.use('/api', apiRoutes);
 
+// O roteamento é do lado do cliente: /receita/441620 e /configuracoes não
+// existem como arquivo. Sem este fallback, link direto e recarregar a
+// página dão "Cannot GET" — funcionava só porque o service worker
+// respondia; navegador novo, aba anônima ou SW recém-instalado quebravam.
+// Vem depois das rotas de API para não engolir 404 de endpoint.
+app.get(/^(?!\/api\/|\/auth\/).*/, (req, res, next) => {
+    if (req.accepts('html')) {
+        return res.sendFile('index.html', { root: 'public' });
+    }
+    next();
+});
+
 // --- Inicialização do Servidor ---
 async function startServer() {
     try {

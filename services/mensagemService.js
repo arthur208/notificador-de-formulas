@@ -23,6 +23,19 @@ function escolherModalidade(isDelivery, prazo) {
     return prazo.local ? 'entrega_local' : 'entrega';
 }
 
+// Interruptor geral do canal: desliga botões em todas as modalidades sem
+// apagar as definições. Aplicado aqui, e não no envio, para a prévia da
+// tela e a mensagem enviada não poderem divergir.
+async function botoesLigados() {
+    try {
+        const canal = await require('./canalConfigService').carregarCanal();
+        return canal?.botoesAtivos === true;
+    } catch (erro) {
+        console.error('Não foi possível ler a configuração do canal:', erro.message);
+        return false;
+    }
+}
+
 async function montarMensagem(codigoReceita, nomeCliente, convenioTs) {
     const comuns = {
         saudacao: getSaudacao(),
@@ -41,7 +54,7 @@ async function montarMensagem(codigoReceita, nomeCliente, convenioTs) {
         return {
             texto: renderizar(template.corpo, valores),
             cabecalho: renderizar(template.cabecalho ?? '', valores),
-            botoes: montarBotoes(template.botoes, valores),
+            botoes: (await botoesLigados()) ? montarBotoes(template.botoes, valores) : null,
             modalidade: 'convenio',
         };
     }
@@ -60,7 +73,7 @@ async function montarMensagem(codigoReceita, nomeCliente, convenioTs) {
     return {
         texto: renderizar(template.corpo, valores),
         cabecalho: renderizar(template.cabecalho ?? '', valores),
-        botoes: montarBotoes(template.botoes, valores),
+        botoes: (await botoesLigados()) ? montarBotoes(template.botoes, valores) : null,
         modalidade,
     };
 }

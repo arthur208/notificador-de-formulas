@@ -38,11 +38,6 @@ async function sendMessage(req, res) {
     }
 
     try {
-        // botoesAtivos no canal é o interruptor geral: permite desligar
-        // botões em todas as modalidades de uma vez, sem apagar as definições.
-        const canal = await require('../services/canalConfigService').carregarCanal();
-        if (!canal?.botoesAtivos) botoes = null;
-
         // O que de fato saiu, para o log conferir com o que o cliente viu.
         let textoEnviado = textoFinal;
 

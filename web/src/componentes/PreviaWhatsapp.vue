@@ -40,7 +40,7 @@ const agora = computed(() => {
 </script>
 
 <template>
-    <div class="telefone">
+    <div class="aparelho">
         <div class="barra-topo">
             <span class="voltar">‹</span>
             <span class="avatar">B</span>
@@ -74,7 +74,10 @@ const agora = computed(() => {
 </template>
 
 <style scoped>
-.telefone {
+/* Não chamar de "telefone": o Vue carimba o escopo do PAI no elemento
+   raiz do filho, e a tela de envio tem .telefone para os botões de número
+   — o estilo de lá vazava para cá e quebrava o layout. */
+.aparelho {
     max-width: 340px;
     border: 1px solid var(--cor-borda);
     border-radius: 18px;

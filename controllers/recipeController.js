@@ -36,10 +36,16 @@ async function getCliente(req, res) {
         // A sugestão sai do MESMO montador do envio. Antes vinha de texto
         // fixo aqui, então o template editado em Configurações não chegava
         // ao cliente: a tela mandava este texto, e o servidor o respeitava.
-        let mensagemSugerida = null;
+        let previa = null;
         let faltando = null;
         try {
-            mensagemSugerida = (await montarMensagem(codigoReceita, clienteData.nome)).texto;
+            const montada = await montarMensagem(codigoReceita, clienteData.nome);
+            previa = {
+                texto: montada.texto,
+                cabecalho: montada.cabecalho,
+                botoes: montada.botoes ?? [],
+                modalidade: montada.modalidade,
+            };
         } catch (erro) {
             if (!(erro instanceof VariavelAusenteError)) throw erro;
             faltando = erro.faltando;
@@ -47,7 +53,7 @@ async function getCliente(req, res) {
 
         res.json({
             dadosCliente: clienteData,
-            mensagemSugerida,
+            previa,
             faltando,
             jaEnviado: logSucessoExistente !== null,
             isDelivery,
@@ -72,7 +78,12 @@ async function getMensagem(req, res) {
         if (!clienteData) return res.status(404).json({ erro: 'Cliente não encontrado.' });
 
         const montada = await montarMensagem(codigoReceita, clienteData.nome, convenioTs);
-        res.json({ texto: montada.texto, modalidade: montada.modalidade });
+        res.json({
+            texto: montada.texto,
+            cabecalho: montada.cabecalho,
+            botoes: montada.botoes ?? [],
+            modalidade: montada.modalidade,
+        });
     } catch (erro) {
         if (erro instanceof VariavelAusenteError) {
             return res.status(422).json({
