@@ -1,4 +1,4 @@
-const { test } = require('node:test');
+const { test, describe } = require('node:test');
 const assert = require('node:assert');
 const { validarBotoes } = require('../services/whatsmeowService');
 
@@ -37,4 +37,22 @@ test('tipo desconhecido é recusado', () => {
 
 test('todo botão precisa de title', () => {
     assert.throws(() => validarBotoes([{ id: 'a', type: 'reply' }]), /title/);
+});
+
+describe('cabeçalho na mensagem sem botões', () => {
+    const { comCabecalho } = require('../controllers/messageController');
+
+    test('entra como primeira linha em negrito', () => {
+        assert.strictEqual(
+            comCabecalho('Farmácia Bioessência', 'Sua fórmula está pronta.'),
+            '*Farmácia Bioessência*\n\nSua fórmula está pronta.'
+        );
+    });
+
+    test('cabeçalho vazio não deixa negrito solto no texto', () => {
+        assert.strictEqual(comCabecalho('', 'Corpo.'), 'Corpo.');
+        assert.strictEqual(comCabecalho('   ', 'Corpo.'), 'Corpo.');
+        assert.strictEqual(comCabecalho(null, 'Corpo.'), 'Corpo.');
+        assert.strictEqual(comCabecalho(undefined, 'Corpo.'), 'Corpo.');
+    });
 });

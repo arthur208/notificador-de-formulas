@@ -2,7 +2,7 @@ import { buscarJson } from './cliente';
 
 export type Modalidade = 'retirada' | 'entrega' | 'entrega_local' | 'convenio';
 export type Template = {
-    modalidade: Modalidade; titulo: string; corpo: string;
+    modalidade: Modalidade; cabecalho: string; corpo: string;
     botoes?: BotaoDef[]; versao?: number;
 };
 export type Cidade = {
@@ -36,7 +36,7 @@ async function enviar(metodo: string, caminho: string, corpo?: unknown): Promise
     }
 }
 
-export const salvarTemplate = (m: Modalidade, dados: { titulo: string; corpo: string; botoes: BotaoDef[] }) =>
+export const salvarTemplate = (m: Modalidade, dados: { cabecalho: string; corpo: string; botoes: BotaoDef[] }) =>
     enviar('PUT', `/api/config/templates/${m}`, dados);
 
 export const salvarCidade = (codigoCid: number, dados: Partial<Cidade>) =>

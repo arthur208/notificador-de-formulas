@@ -31,6 +31,7 @@ async function montarMensagem(codigoReceita, nomeCliente, convenioTs) {
         const valores = { ...comuns, ...convenioService.variaveisDoConvenio(config) };
         return {
             texto: renderizar(template.corpo, valores),
+            cabecalho: renderizar(template.cabecalho ?? '', valores),
             botoes: montarBotoes(template.botoes, valores),
             modalidade: 'convenio',
         };
@@ -49,9 +50,20 @@ async function montarMensagem(codigoReceita, nomeCliente, convenioTs) {
     };
     return {
         texto: renderizar(template.corpo, valores),
+        cabecalho: renderizar(template.cabecalho ?? '', valores),
         botoes: montarBotoes(template.botoes, valores),
         modalidade,
     };
+}
+
+// O cabeçalho só existe como campo próprio na mensagem com botões: o
+// endpoint de texto simples aceita apenas `body`. Sem botões, ele entra
+// como primeira linha em negrito — que é como o WhatsApp desenha o
+// cabeçalho de qualquer jeito.
+function comCabecalho(cabecalho, texto) {
+    const limpo = (cabecalho ?? '').trim();
+    if (limpo === '') return texto;
+    return `*${limpo}*\n\n${texto}`;
 }
 
 // Os botões saem da configuração do canal, com as mesmas variáveis do
@@ -83,11 +95,13 @@ async function sendMessage(req, res) {
 
     let textoFinal = mensagem;
     let botoes = null;
+    let cabecalho = '';
     try {
-        // Sempre monta: mesmo com o texto editado pela atendente, os botões
-        // vêm do template — ela edita a mensagem, não a definição dos botões.
+        // Sempre monta: mesmo com o texto editado pela atendente, botões e
+        // cabeçalho vêm do template — ela edita a mensagem, não a estrutura.
         const montada = await montarMensagem(codigoReceita, nomeCliente, convenioTs);
         botoes = montada.botoes;
+        cabecalho = montada.cabecalho;
         if (!textoFinal || textoFinal.trim() === '') textoFinal = montada.texto;
     } catch (erro) {
         if (erro instanceof VariavelAusenteError) {
@@ -106,22 +120,28 @@ async function sendMessage(req, res) {
         const canal = await require('../services/canalConfigService').carregarCanal();
         if (!canal?.botoesAtivos) botoes = null;
 
+        // O que de fato saiu, para o log conferir com o que o cliente viu.
+        let textoEnviado = textoFinal;
+
         if (botoes && botoes.length > 0) {
             await whatsmeowService.enviarBotoes({
                 numero: numeroFormatado,
-                titulo: 'Farmácia Bioessência',
+                // `title` é obrigatório no endpoint de botões.
+                titulo: cabecalho?.trim() || templateService.CABECALHO_PADRAO,
                 corpo: textoFinal,
                 botoes,
             });
         } else {
-            await whatsmeowService.enviarTexto({ numero: numeroFormatado, mensagem: textoFinal });
+            textoEnviado = comCabecalho(cabecalho, textoFinal);
+            await whatsmeowService.enviarTexto({ numero: numeroFormatado, mensagem: textoEnviado });
         }
 
         await mongoService.logToMongo({
             codigoReceita: Number(codigoReceita),
             nomeCliente,
             telefoneEnviado: numeroFormatado,
-            mensagem: textoFinal,
+            mensagem: textoEnviado,
+            cabecalho: cabecalho?.trim() || null,
             status: 'sucesso',
             timestamp: new Date(),
         });
@@ -146,4 +166,4 @@ async function sendMessage(req, res) {
     }
 }
 
-module.exports = { sendMessage };
+module.exports = { sendMessage, comCabecalho };

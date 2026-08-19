@@ -10,7 +10,11 @@ const props = defineProps<{
 }>();
 
 const MAX_BOTOES = 3;
+// O fornecedor não documenta limite. O número vem da API oficial do
+// WhatsApp e serve de aviso: passando disso, ela corta na exibição.
+const CABECALHO_RECOMENDADO = 60;
 
+const cabecalho = ref(props.template.cabecalho ?? '');
 const corpo = ref(props.template.corpo);
 const botoes = ref<BotaoDef[]>(props.template.botoes ? [...props.template.botoes] : []);
 const salvando = ref(false);
@@ -18,6 +22,7 @@ const erro = ref<string | null>(null);
 const salvo = ref(false);
 
 watch(() => props.template, (novo) => {
+    cabecalho.value = novo.cabecalho ?? '';
     corpo.value = novo.corpo;
     botoes.value = novo.botoes ? [...novo.botoes] : [];
 });
@@ -41,6 +46,8 @@ function preencher(texto: string): string {
 }
 
 const textoPrevia = computed(() => preencher(corpo.value));
+const cabecalhoPrevia = computed(() => preencher(cabecalho.value));
+const longoDemais = computed(() => cabecalho.value.length > CABECALHO_RECOMENDADO);
 const botoesPrevia = computed(() =>
     botoes.value.map((b) => ({ ...b, title: preencher(b.title) }))
 );
@@ -73,7 +80,7 @@ async function guardar() {
     salvo.value = false;
     try {
         await salvarTemplate(props.template.modalidade as Modalidade, {
-            titulo: props.template.titulo,
+            cabecalho: cabecalho.value,
             corpo: corpo.value,
             botoes: botoes.value,
         });
@@ -89,7 +96,34 @@ async function guardar() {
 <template>
     <div class="editor">
         <div class="coluna">
-            <h3>Texto</h3>
+            <h3>Cabeçalho</h3>
+            <div class="linha-cabecalho">
+                <input
+                    v-model="cabecalho"
+                    type="text"
+                    class="campo-cabecalho"
+                    placeholder="Farmácia Bioessência"
+                    @input="salvo = false"
+                >
+                <span :class="['contador', { estourou: longoDemais }]">
+                    {{ cabecalho.length }}/{{ CABECALHO_RECOMENDADO }}
+                </span>
+            </div>
+            <p class="dica">
+                <template v-if="botoes.length > 0">
+                    Vai no campo de título da mensagem com botões. Vazio, sai
+                    <span class="exemplo">Farmácia Bioessência</span>.
+                </template>
+                <template v-else>
+                    Sem botões, o WhatsApp não tem campo de cabeçalho: ele entra como
+                    primeira linha em negrito. Vazio, a mensagem sai sem cabeçalho.
+                </template>
+                <span v-if="longoDemais" class="alerta">
+                    Acima de {{ CABECALHO_RECOMENDADO }} caracteres o WhatsApp pode cortar.
+                </span>
+            </p>
+
+            <h3 class="secao">Texto</h3>
             <Textarea v-model="corpo" auto-resize rows="10" class="campo" />
 
             <p class="dica">Clique para inserir:</p>
@@ -128,7 +162,7 @@ async function guardar() {
 
         <div class="coluna">
             <h3>Como o cliente vê</h3>
-            <PreviaWhatsapp :texto="textoPrevia" :botoes="botoesPrevia" />
+            <PreviaWhatsapp :texto="textoPrevia" :cabecalho="cabecalhoPrevia" :botoes="botoesPrevia" />
         </div>
 
         <div class="acoes">
@@ -145,7 +179,17 @@ async function guardar() {
 .editor { display: grid; grid-template-columns: 1fr auto; gap: 28px; align-items: start; }
 .acoes { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; }
 h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--cor-texto-suave); }
-.titulo-botoes { margin-top: 28px; }
+.titulo-botoes, .secao { margin-top: 28px; }
+.linha-cabecalho { display: flex; align-items: center; gap: 10px; }
+.campo-cabecalho {
+    flex: 1; min-width: 0; padding: 10px 12px;
+    font: inherit; font-size: 0.9rem; color: var(--cor-texto);
+    border: 1px solid var(--cor-borda); border-radius: 6px; background: var(--cor-fundo);
+}
+.contador { font-size: 0.75rem; color: var(--cor-texto-suave); font-variant-numeric: tabular-nums; }
+.contador.estourou { color: #b45309; font-weight: 600; }
+.exemplo { font-family: var(--fonte-dados); font-size: 0.78rem; }
+.alerta { display: block; margin-top: 4px; color: #b45309; }
 .campo { width: 100%; font-family: var(--fonte-dados); font-size: 0.9rem; }
 .dica { font-size: 0.8rem; color: var(--cor-texto-suave); margin: 12px 0 6px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }

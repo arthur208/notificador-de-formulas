@@ -31,3 +31,18 @@ test('template sem variável nenhuma é válido', () => {
 test('modalidade desconhecida recusa tudo', () => {
     assert.throws(() => validarTemplate('inexistente', '{{nome}}'), /[Mm]odalidade/);
 });
+
+test('cabeçalho passa pela mesma validação de variáveis do corpo', () => {
+    const invalidas = validarTemplate('retirada', 'Corpo sem variável.', [], [], 'Olá {{nome}}');
+    assert.deepStrictEqual(invalidas, []);
+});
+
+test('variável inexistente no cabeçalho reprova o template', () => {
+    const invalidas = validarTemplate('retirada', 'Corpo sem variável.', [], [], 'Chega em {{dias}}');
+    assert.deepStrictEqual(invalidas, ['dias']);
+});
+
+test('cabeçalho vazio ou ausente não inventa variável', () => {
+    assert.deepStrictEqual(validarTemplate('retirada', 'Pronta.', [], [], ''), []);
+    assert.deepStrictEqual(validarTemplate('retirada', 'Pronta.', [], [], null), []);
+});

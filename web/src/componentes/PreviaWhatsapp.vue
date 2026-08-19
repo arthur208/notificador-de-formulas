@@ -2,7 +2,12 @@
 import { computed } from 'vue';
 import type { BotaoDef } from '@/api/config';
 
-const props = defineProps<{ texto: string; botoes: BotaoDef[]; remetente?: string }>();
+const props = defineProps<{
+    texto: string;
+    botoes: BotaoDef[];
+    cabecalho?: string;
+    remetente?: string;
+}>();
 
 const ICONE: Record<string, string> = {
     cta_call: '📞',
@@ -13,8 +18,8 @@ const ICONE: Record<string, string> = {
 
 // Negrito, itálico e riscado do WhatsApp. Escapamos antes para o texto do
 // template nunca virar HTML — ele é digitado por gente e sai para o cliente.
-const textoFormatado = computed(() => {
-    const escapado = props.texto
+function formatar(texto: string): string {
+    const escapado = (texto ?? '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
@@ -23,7 +28,10 @@ const textoFormatado = computed(() => {
         .replace(/_([^_\n]+)_/g, '<em>$1</em>')
         .replace(/~([^~\n]+)~/g, '<s>$1</s>')
         .replace(/\n/g, '<br>');
-});
+}
+
+const textoFormatado = computed(() => formatar(props.texto));
+const cabecalhoLimpo = computed(() => (props.cabecalho ?? '').trim());
 
 const agora = computed(() => {
     const d = new Date();
@@ -44,6 +52,7 @@ const agora = computed(() => {
 
         <div class="conversa">
             <div class="balao">
+                <p v-if="cabecalhoLimpo" class="cabecalho">{{ cabecalhoLimpo }}</p>
                 <p class="corpo" v-html="textoFormatado" />
                 <span class="hora">{{ agora }}</span>
 
@@ -95,6 +104,10 @@ const agora = computed(() => {
     padding: 8px 10px 6px;
     box-shadow: 0 1px 1px rgb(0 0 0 / 0.12);
     position: relative;
+}
+.cabecalho {
+    margin: 0 0 6px; font-size: 0.9rem; font-weight: 700; line-height: 1.3;
+    color: #111b21; word-break: break-word;
 }
 .corpo {
     margin: 0; font-size: 0.86rem; line-height: 1.45;
