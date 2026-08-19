@@ -144,7 +144,7 @@ async function enviar() {
     if (!escolhido.value || !detalhe.value) return;
     enviando.value = true;
     try {
-        await enviarAviso({
+        const r = await enviarAviso({
             codigoReceita: codigo,
             // O número que a API normalizou, quando existe: o ERP guarda
             // telefone sem DDI e é esse que o WhatsApp reconhece.
@@ -152,7 +152,16 @@ async function enviar() {
             nomeCliente: detalhe.value.dadosCliente.nome,
             convenioTs: convenioEscolhido.value ?? undefined,
         });
-        toast.add({ severity: 'success', summary: 'Aviso enviado', life: 3000 });
+        toast.add(
+            r?.semBotoes
+                ? {
+                    severity: 'warn',
+                    summary: 'Enviado sem os botões',
+                    detail: 'O provedor recusou os botões; o texto foi entregue.',
+                    life: 6000,
+                }
+                : { severity: 'success', summary: 'Aviso enviado', life: 3000 }
+        );
         router.push({ name: 'hoje' });
     } catch (e) {
         toast.add({

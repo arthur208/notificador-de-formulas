@@ -94,9 +94,12 @@ function comCabecalho(cabecalho, texto) {
 function montarBotoes(definicoes, valores) {
     if (!Array.isArray(definicoes) || definicoes.length === 0) return null;
 
-    return definicoes.slice(0, 3).map((definicao) => {
+    return definicoes.slice(0, 3).map((definicao, indice) => {
         const botao = { title: renderizar(definicao.title, valores), type: definicao.type };
-        if (definicao.type === 'reply') botao.id = definicao.id;
+        // A API exige `id` em TODO tipo de botão, não só no reply como diz
+        // o OpenAPI: cta_call sem id volta 400 "buttons[0].id is a required
+        // field". Medido contra a API real.
+        botao.id = definicao.id || `botao_${indice + 1}`;
         if (definicao.type === 'cta_url') botao.url = renderizar(definicao.url, valores);
         if (definicao.type === 'cta_call') botao.phone_number = definicao.phone_number;
         if (definicao.type === 'cta_copy') botao.copy_code = renderizar(definicao.copy_code, valores);

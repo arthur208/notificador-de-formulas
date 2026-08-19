@@ -40,15 +40,28 @@ async function sendMessage(req, res) {
     try {
         // O que de fato saiu, para o log conferir com o que o cliente viu.
         let textoEnviado = textoFinal;
+        let semBotoes = false;
 
         if (botoes && botoes.length > 0) {
-            await whatsmeowService.enviarBotoes({
-                numero: numeroFormatado,
-                // `title` é obrigatório no endpoint de botões.
-                titulo: cabecalho?.trim() || templateService.CABECALHO_PADRAO,
-                corpo: textoFinal,
-                botoes,
-            });
+            try {
+                await whatsmeowService.enviarBotoes({
+                    numero: numeroFormatado,
+                    // `title` é obrigatório no endpoint de botões.
+                    titulo: cabecalho?.trim() || templateService.CABECALHO_PADRAO,
+                    corpo: textoFinal,
+                    botoes,
+                });
+            } catch (erroBotoes) {
+                // O endpoint de botões da MultiAtend devolveu 500 para todo
+                // tipo de botão em 19/08/2026, com o de texto funcionando na
+                // mesma conexão. Cliente avisado sem botão é melhor que
+                // cliente não avisado — o texto é o mesmo, e o cabeçalho vira
+                // primeira linha em negrito. Fica registrado no log.
+                console.error('Botões recusados, caindo para texto:', erroBotoes.message);
+                semBotoes = true;
+                textoEnviado = comCabecalho(cabecalho, textoFinal);
+                await whatsmeowService.enviarTexto({ numero: numeroFormatado, mensagem: textoEnviado });
+            }
         } else {
             textoEnviado = comCabecalho(cabecalho, textoFinal);
             await whatsmeowService.enviarTexto({ numero: numeroFormatado, mensagem: textoEnviado });
@@ -60,11 +73,18 @@ async function sendMessage(req, res) {
             telefoneEnviado: numeroFormatado,
             mensagem: textoEnviado,
             cabecalho: cabecalho?.trim() || null,
+            // Registra a degradação: o histórico precisa dizer que o cliente
+            // recebeu sem botão, senão vira mistério depois.
+            botoesRecusados: semBotoes || undefined,
             status: 'sucesso',
             timestamp: new Date(),
         });
 
-        res.json({ status: 'sucesso', mensagem: 'Mensagem enviada.' });
+        res.json({
+            status: 'sucesso',
+            mensagem: semBotoes ? 'Mensagem enviada, mas sem os botões.' : 'Mensagem enviada.',
+            semBotoes,
+        });
     } catch (erro) {
         console.error('Falha no envio:', erro.message);
 

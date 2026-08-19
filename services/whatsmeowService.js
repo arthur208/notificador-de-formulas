@@ -68,6 +68,9 @@ function validarBotoes(botoes) {
     }
     for (const botao of botoes) {
         if (!botao.title) throw new Error('Todo botão precisa de title.');
+        // O OpenAPI diz que `id` só é exigido no reply; a API real recusa
+        // qualquer tipo sem ele — "buttons[0].id is a required field".
+        if (!botao.id) throw new Error('Todo botão precisa de id.');
         const exigidos = TIPOS_BOTAO[botao.type];
         if (!exigidos) throw new Error(`Tipo de botão desconhecido: ${botao.type}`);
         for (const campo of exigidos) {

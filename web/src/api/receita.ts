@@ -62,16 +62,17 @@ export async function enviarAviso(dados: {
     telefoneEscolhido: string;
     nomeCliente: string;
     convenioTs?: number;
-}): Promise<void> {
+}): Promise<{ semBotoes?: boolean }> {
     const resposta = await fetch('/api/enviar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dados),
     });
+    const corpo = await resposta.json().catch(() => ({}));
     if (!resposta.ok) {
-        const corpo = await resposta.json().catch(() => ({}));
         throw new Error(corpo?.mensagem || 'Não foi possível enviar o aviso.');
     }
+    return corpo;
 }
 
 // Os quatro campos de telefone do ERP, na ordem em que a atendente costuma usar.
