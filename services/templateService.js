@@ -8,21 +8,15 @@ const MAX_BOTOES = 3;
 // vazio, é este que vai — nunca deixamos o envio falhar por falta dele.
 const CABECALHO_PADRAO = 'Farmácia Bioessência Informa:';
 
-// ---------------------------------------------------------------------
-// Botões desligados em 19/08/2026.
+// Interruptor de emergência do recurso de botões. Desligado em 19/08/2026,
+// quando o endpoint /messages/whatsmeow/buttons da MultiAtend passou a
+// devolver 500 para qualquer payload; religado no mesmo dia, depois que
+// eles corrigiram e o envio voltou a responder 200 com messageId.
 //
-// O endpoint /api/v1/messages/whatsmeow/buttons da MultiAtend devolve 500
-// "Internal server error" para qualquer botão — reply, cta_call, cta_copy,
-// com id ou sem, um ou três, corpo curto ou longo. Confirmado aqui e pelo
-// cliente no Postman. O endpoint de texto responde 200 na mesma conexão,
-// então o problema é do provedor, não da nossa chamada.
-//
-// Nada foi removido: definições, montagem, validação, envio e a queda para
-// texto continuam no lugar e testados. Esta constante só esconde a opção
-// das telas e impede o envio de tentar. Para religar quando eles
-// consertarem, basta trocar para true.
-// ---------------------------------------------------------------------
-const BOTOES_DISPONIVEIS = false;
+// Fica aqui para o caso de cair de novo: em false, o sistema não tenta
+// botões e a opção some das telas, sem apagar nada. A queda automática
+// para texto no envio continua valendo como rede de segurança.
+const BOTOES_DISPONIVEIS = true;
 
 // O clique do cliente abre atendimento no MultiAtendWeb; este sistema não
 // lê a resposta (decisão D8). Os ids existem para o bot decidir depois.
