@@ -2,8 +2,6 @@
 require('dotenv').config(); 
 
 const express = require('express');
-const cors = require('cors');
-const ipWhitelistMiddleware = require('./middleware/ipWhitelist');
 const apiRoutes = require('./routes/api');
 // Removido testPgConnection da importação
 const { connectToMongo, config } = require('./config/db');
@@ -13,10 +11,15 @@ const app = express();
 const PORT = config.porta;
 
 // --- Middlewares Globais ---
-app.set('trust proxy', 1); // Confia no proxy (para o req.ip funcionar)
-app.use(ipWhitelistMiddleware); // 1º: Filtro de IP
-app.use(cors()); // 2º: Libera CORS
-app.use(express.json()); // 3º: Habilita o body-parser de JSON
+// A whitelist de IP saiu em 19/08/2026. Ela liberava a faixa 192.168/10
+// inteira e lia o IP de um cabeçalho que o cliente controla, então não
+// segurava ninguém — e dava a impressão de que segurava. Quem controla o
+// acesso agora é o login, com freio de tentativas em utils/limiteTentativas.
+//
+// trust proxy fica ligado para o req.ip do log e do freio refletirem o
+// cliente quando houver proxy na frente.
+app.set('trust proxy', 1);
+app.use(express.json());
 app.use(require('./middleware/autenticacao').carregarUsuario);
 app.use('/auth', require('./routes/auth'));
 app.use(express.static('public')); // 4º: Serve os arquivos estáticos (index.html, app.js)

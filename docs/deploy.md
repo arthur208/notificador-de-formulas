@@ -53,6 +53,9 @@ MONGO_COLLECTION_LOGS=notificador_logs
 
 # Firebird de produção
 FB_HOST=<ip do ERP>
+
+# Faz o cookie de sessão sair com a marca Secure.
+NODE_ENV=production
 ```
 
 ### Não existe migração de dados
@@ -224,6 +227,16 @@ O log guarda `telefoneDigitado`, `telefoneEnviado` e `idMensagem`.
 **Botões param de funcionar** — a API do provedor já ficou fora do ar. O envio
 cai para texto sozinho e marca `botoesRecusados` no log. Para desligar de vez,
 `BOTOES_DISPONIVEIS = false` em `services/templateService.js`.
+
+**Quem controla o acesso** — o login, e só ele. A whitelist de IP saiu em
+19/08/2026: liberava a faixa `192.168.`/`10.` inteira e lia o IP de um
+cabeçalho que o cliente controla, então não segurava ninguém. O login tem
+freio de tentativas (5 falhas por e-mail, 20 por origem, 15 minutos), contado
+na memória do processo — reiniciar o serviço zera a contagem.
+
+**Se o sistema precisar ficar fora da internet**, isso é trabalho de firewall
+ou de proxy, não da aplicação. Bloquear a porta 3008 para fora da rede da
+farmácia é mais barato e mais confiável do que qualquer filtro em código.
 
 **Firebird recusa conexão de vez em quando** — falha intermitente conhecida,
 sem causa identificada, que se recupera sozinha. Se persistir, é o ERP.

@@ -2,6 +2,7 @@ const usuarioService = require('../services/usuarioService');
 const sessaoService = require('../services/sessaoService');
 const { conferirSenha } = require('../utils/senha');
 const { lerCookies } = require('../utils/cookies');
+const limite = require('../utils/limiteTentativas');
 
 const NOME_COOKIE = 'sessao';
 
@@ -21,6 +22,15 @@ function montarCookie(token, maxIdadeMs) {
 
 async function login(req, res) {
     const { email, senha } = req.body || {};
+    const origem = req.ip;
+
+    const espera = limite.bloqueadoPor(email, origem);
+    if (espera > 0) {
+        const minutos = Math.ceil(espera / 60);
+        return res.status(429).json({
+            erro: `Muitas tentativas. Tente de novo em ${minutos} minuto${minutos > 1 ? 's' : ''}.`,
+        });
+    }
 
     const usuario = await usuarioService.buscarPorEmail(email);
     const confere = usuario ? await conferirSenha(senha, usuario.senhaHash) : false;
@@ -28,10 +38,12 @@ async function login(req, res) {
     // Mesma resposta para e-mail inexistente e senha errada:
     // dizer qual dos dois falhou entrega lista de usuários válidos.
     if (!confere) {
-        console.warn(`Login recusado para "${String(email).slice(0, 60)}".`);
+        limite.registrarFalha(email, origem);
+        console.warn(`Login recusado para "${String(email).slice(0, 60)}" (origem ${origem}).`);
         return res.status(401).json({ erro: 'E-mail ou senha incorretos.' });
     }
 
+    limite.registrarSucesso(email, origem);
     const token = await sessaoService.abrirSessao(usuario);
     res.setHeader('Set-Cookie', montarCookie(token, sessaoService.DURACAO_MS));
     res.json({ usuario: usuarioService.semSegredo(usuario) });
