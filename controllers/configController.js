@@ -47,6 +47,9 @@ async function lerTemplates(_req, res) {
 
     res.json({
         templates,
+        // A tela pergunta ao servidor em vez de ter a própria constante:
+        // duas fontes para a mesma verdade divergem na primeira mudança.
+        recursos: { botoes: templateService.BOTOES_DISPONIVEIS },
         variaveis: {
             globais: templateService.VARIAVEIS_GLOBAIS,
             porModalidade: templateService.VARIAVEIS_POR_MODALIDADE,

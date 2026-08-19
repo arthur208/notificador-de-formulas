@@ -18,6 +18,8 @@ const templates = ref<Template[]>([]);
 const variaveis = ref<Variaveis | null>(null);
 const modalidadeAtiva = ref<Modalidade>('retirada');
 const erro = ref<string | null>(null);
+// Botões saem do ar por decisão do servidor, não da tela.
+const botoesDisponiveis = ref(false);
 
 // Ordem e nomes fixos: o Mongo devolve na ordem de inserção, e
 // "entrega_local" com underscore não é nome para mostrar a ninguém.
@@ -56,6 +58,7 @@ onMounted(async () => {
         const dados = await lerTemplates();
         templates.value = dados.templates;
         variaveis.value = dados.variaveis;
+        botoesDisponiveis.value = dados.recursos?.botoes === true;
     } catch (e) {
         erro.value = e instanceof Error ? e.message : 'Não foi possível carregar.';
     }
@@ -102,6 +105,7 @@ onMounted(async () => {
                     :key="templateAtivo.modalidade"
                     :template="templateAtivo"
                     :variaveis-disponiveis="variaveisDaModalidade"
+                    :botoes-disponiveis="botoesDisponiveis"
                 />
             </section>
 

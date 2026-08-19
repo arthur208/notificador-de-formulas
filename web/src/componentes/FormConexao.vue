@@ -88,15 +88,9 @@ async function guardar() {
             </label>
         </div>
 
-        <h3>Botões na mensagem</h3>
-        <p class="explica">
-            Interruptor geral. Os botões de cada mensagem são definidos em
-            <strong>Mensagens</strong>, junto do texto — cada modalidade tem os seus.
-        </p>
-
-        <label class="ligar">
-            <input v-model="botoesAtivos" type="checkbox"> enviar mensagens com botões
-        </label>
+        <!-- Interruptor de botões escondido enquanto o endpoint do provedor
+             devolve 500. O valor continua sendo lido e gravado, então volta
+             como estava quando templateService.BOTOES_DISPONIVEIS virar true. -->
 
         <div class="acoes">
             <button type="button" class="salvar" :disabled="salvando" @click="guardar">

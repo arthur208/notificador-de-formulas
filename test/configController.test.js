@@ -60,3 +60,18 @@ test('entrega local também não promete prazo', () => {
 test('entrega com prazo aceita dias', () => {
     assert.deepStrictEqual(validarTemplate('entrega', 'Previsão: {{dias}}.'), []);
 });
+
+// Enquanto o endpoint de botões do provedor devolve 500, a montagem não
+// pode produzir botões — a prévia e o envio partem daqui.
+test('com botões desligados a mensagem sai sem eles', async () => {
+    const { BOTOES_DISPONIVEIS } = require('../services/templateService');
+    assert.strictEqual(BOTOES_DISPONIVEIS, false);
+});
+
+// O código dos botões continua no lugar: quando religar, volta a funcionar
+// sem ninguém precisar reescrever nada.
+test('a montagem de botões continua existindo e correta', () => {
+    const { montarBotoes } = require('../services/mensagemService');
+    const botoes = montarBotoes([{ type: 'reply', id: 'confirmar', title: 'Confirmar' }], {});
+    assert.deepStrictEqual(botoes, [{ title: 'Confirmar', type: 'reply', id: 'confirmar' }]);
+});

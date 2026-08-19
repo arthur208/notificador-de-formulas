@@ -7,6 +7,9 @@ import { salvarTemplate, TIPOS_BOTAO, type Modalidade, type Template, type Botao
 const props = defineProps<{
     template: Template;
     variaveisDisponiveis: string[];
+    // Desligado enquanto o endpoint de botões do provedor devolve 500.
+    // As definições continuam salvas e voltam sozinhas quando religar.
+    botoesDisponiveis?: boolean;
 }>();
 
 const MAX_BOTOES = 3;
@@ -61,8 +64,11 @@ function preencher(texto: string): string {
 const textoPrevia = computed(() => preencher(corpo.value));
 const cabecalhoPrevia = computed(() => preencher(cabecalho.value));
 const longoDemais = computed(() => cabecalho.value.length > CABECALHO_RECOMENDADO);
+// Prévia não pode mostrar botão que não vai sair.
 const botoesPrevia = computed(() =>
-    botoes.value.map((b) => ({ ...b, title: preencher(b.title) }))
+    props.botoesDisponiveis
+        ? botoes.value.map((b) => ({ ...b, title: preencher(b.title) }))
+        : []
 );
 
 // O compilador do Vue termina a interpolação no primeiro par de chaves de
@@ -123,7 +129,7 @@ async function guardar() {
                 </span>
             </div>
             <p class="dica">
-                <template v-if="botoes.length > 0">
+                <template v-if="botoesDisponiveis && botoes.length > 0">
                     Vai no campo de título da mensagem com botões. Vazio, sai
                     <span class="exemplo">Farmácia Bioessência Informa:</span>.
                 </template>
@@ -155,6 +161,7 @@ async function guardar() {
                 Escreva só "em {{ rotulo('dias') }}", sem repetir a unidade.
             </p>
 
+            <template v-if="botoesDisponiveis">
             <h3 class="titulo-botoes">Botões desta mensagem</h3>
             <p class="dica">
                 No máximo 3. O clique do cliente gera atendimento no MultiAtendWeb —
@@ -176,6 +183,7 @@ async function guardar() {
             <button v-if="botoes.length < MAX_BOTOES" type="button" class="adicionar" @click="acrescentarBotao">
                 + acrescentar botão
             </button>
+            </template>
         </div>
 
         <div class="coluna">

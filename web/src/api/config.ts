@@ -12,7 +12,11 @@ export type Cidade = {
 export type Sugestao = { codigoCid: number; nome: string; uf: string; entregas: number };
 export type Variaveis = { globais: string[]; porModalidade: Record<Modalidade, string[]> };
 
-export function lerTemplates(): Promise<{ templates: Template[]; variaveis: Variaveis }> {
+export function lerTemplates(): Promise<{
+    templates: Template[];
+    variaveis: Variaveis;
+    recursos?: { botoes: boolean };
+}> {
     return buscarJson('/api/config/templates');
 }
 

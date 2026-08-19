@@ -27,6 +27,9 @@ function escolherModalidade(isDelivery, prazo) {
 // apagar as definições. Aplicado aqui, e não no envio, para a prévia da
 // tela e a mensagem enviada não poderem divergir.
 async function botoesLigados() {
+    // Desligado no código enquanto o endpoint do provedor está quebrado;
+    // ver o comentário em templateService.BOTOES_DISPONIVEIS.
+    if (!templateService.BOTOES_DISPONIVEIS) return false;
     try {
         const canal = await require('./canalConfigService').carregarCanal();
         return canal?.botoesAtivos === true;

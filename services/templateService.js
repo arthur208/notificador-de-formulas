@@ -8,6 +8,22 @@ const MAX_BOTOES = 3;
 // vazio, é este que vai — nunca deixamos o envio falhar por falta dele.
 const CABECALHO_PADRAO = 'Farmácia Bioessência Informa:';
 
+// ---------------------------------------------------------------------
+// Botões desligados em 19/08/2026.
+//
+// O endpoint /api/v1/messages/whatsmeow/buttons da MultiAtend devolve 500
+// "Internal server error" para qualquer botão — reply, cta_call, cta_copy,
+// com id ou sem, um ou três, corpo curto ou longo. Confirmado aqui e pelo
+// cliente no Postman. O endpoint de texto responde 200 na mesma conexão,
+// então o problema é do provedor, não da nossa chamada.
+//
+// Nada foi removido: definições, montagem, validação, envio e a queda para
+// texto continuam no lugar e testados. Esta constante só esconde a opção
+// das telas e impede o envio de tentar. Para religar quando eles
+// consertarem, basta trocar para true.
+// ---------------------------------------------------------------------
+const BOTOES_DISPONIVEIS = false;
+
 // O clique do cliente abre atendimento no MultiAtendWeb; este sistema não
 // lê a resposta (decisão D8). Os ids existem para o bot decidir depois.
 const BOTAO_CONFIRMAR = { type: 'reply', id: 'confirmar', title: 'Confirmar' };
@@ -142,5 +158,5 @@ async function listarTemplates() {
 module.exports = {
     carregarTemplate, salvarTemplate, listarTemplates, validarTemplate,
     TEMPLATES_PADRAO, VARIAVEIS_POR_MODALIDADE, VARIAVEIS_GLOBAIS, MAX_BOTOES,
-    CABECALHO_PADRAO, CABECALHO_RECOMENDADO,
+    CABECALHO_PADRAO, CABECALHO_RECOMENDADO, BOTOES_DISPONIVEIS,
 };
