@@ -49,9 +49,31 @@ async function main() {
     // Histórico: se a coleção de logs estiver vazia em produção, quase certo
     // que MONGO_DB_NAME ou MONGO_COLLECTION_LOGS está apontando para o lugar
     // errado — e o sistema começaria a gravar num canto novo, sem histórico.
-    const logs = await db.collection(config.mongo.colecaoLogs).countDocuments();
-    if (logs === 0) aviso(`coleção de logs vazia — confira MONGO_DB_NAME e MONGO_COLLECTION_LOGS`);
-    else ok(`${logs} envios no histórico`);
+    const colLogs = db.collection(config.mongo.colecaoLogs);
+    const logs = await colLogs.countDocuments();
+    if (logs === 0) {
+        aviso(`coleção de logs vazia — confira MONGO_DB_NAME e MONGO_COLLECTION_LOGS`);
+    } else {
+        ok(`${logs} envios no histórico`);
+
+        // O "já avisada" da lista depende deste formato. Se codigoReceita
+        // estiver gravado como texto, o $in com números não casa, a tela
+        // mostra todo mundo como pendente e a farmácia reavisa a base
+        // inteira. Falha silenciosa e cara — vale conferir antes.
+        const tipos = await colLogs.aggregate([
+            { $group: { _id: { $type: '$codigoReceita' }, qtd: { $sum: 1 } } },
+        ]).toArray();
+        const naoInteiros = tipos.filter((t) => !['int', 'long', 'double'].includes(t._id));
+        if (naoInteiros.length > 0) {
+            falha(`codigoReceita não é número em ${naoInteiros.map((t) => `${t.qtd} doc(s) do tipo ${t._id}`).join(', ')} — a deduplicação vai falhar`);
+        } else {
+            ok('formato do histórico compatível com a deduplicação');
+        }
+
+        const sucessos = await colLogs.countDocuments({ status: 'sucesso' });
+        if (sucessos === 0) falha('nenhum registro com status "sucesso" — a deduplicação nunca vai encontrar nada');
+        else ok(`${sucessos} envios com sucesso reconhecíveis`);
+    }
 
     console.log('\n--- Semeaduras obrigatórias ---');
     const admins = await db.collection('usuarios').countDocuments({ papel: 'admin', ativo: { $ne: false } });

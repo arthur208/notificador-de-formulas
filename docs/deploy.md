@@ -55,6 +55,26 @@ MONGO_COLLECTION_LOGS=notificador_logs
 FB_HOST=<ip do ERP>
 ```
 
+### Não existe migração de dados
+
+Nada precisa ser importado. O sistema novo grava e lê **a mesma coleção** do
+antigo, com os mesmos campos: `codigoReceita`, `nomeCliente`, `telefoneEnviado`,
+`mensagem`, `status`, `timestamp`. Conferido contra a produção em 19/08/2026 —
+os 8.544 documentos têm `codigoReceita` inteiro e `status` "sucesso"/"erro",
+que é exatamente o que a deduplicação procura.
+
+Na prática, isso significa que **quem já foi avisado hoje pelo sistema antigo
+aparece como "Avisada" no novo, desde o primeiro minuto**. Medido no mesmo dia:
+das 39 receitas completas, 33 já constavam avisadas e 6 ficaram pendentes.
+
+O que o novo grava a mais (`cabecalho`, `botoesRecusados`, `telefoneDigitado`,
+`idMensagem`) simplesmente não existe nos registros antigos. Nada quebra: são
+campos opcionais, usados só para conferência.
+
+Existe também uma coleção `logs_envio` no mesmo banco, de uma versão anterior,
+cujo registro mais novo é de dezembro de 2025. Não é usada nem lida — pode
+ficar onde está.
+
 > **O driver do Mongo ignora o nome do banco que estiver no caminho da URI.**
 > Quem manda é `MONGO_DB_NAME`. Apontar errado aqui faz o sistema gravar num
 > banco vazio e perder o histórico de vista. O arranque imprime o destino —
