@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import DatePicker from 'primevue/datepicker';
 import Skeleton from 'primevue/skeleton';
@@ -8,7 +8,7 @@ import BarraCodigo from '@/componentes/BarraCodigo.vue';
 import CabecalhoApp from '@/componentes/CabecalhoApp.vue';
 import { buscarConferidas } from '@/api/conferidas';
 import { dataParaExibicao } from '@/formatadores';
-import type { Conferida } from '@/api/tipos';
+import type { Conferida, RespostaConferidas } from '@/api/tipos';
 
 type Aba = 'avisar' | 'avisadas' | 'aguardando';
 
@@ -21,6 +21,15 @@ const carregando = ref(true);
 const erro = ref<string | null>(null);
 const demorando = ref(false);
 const aba = ref<Aba>('avisar');
+
+const INTERVALO_MS = 60_000;
+const atualizadoEm = ref<Date | null>(null);
+// Resultado que chegou sozinho e ainda não foi aplicado na tela.
+const pendente = ref<RespostaConferidas | null>(null);
+let relogio: ReturnType<typeof setInterval> | undefined;
+// Descarta resposta atrasada: sem isto, a busca do dia 17 pode chegar
+// depois da do dia 18 e sobrescrever a tela com o dia errado.
+let geracao = 0;
 
 // A API devolve completas e parciais; a separação entre "falta avisar" e
 // "já avisada" é do front, com o jaAvisado que já vem em cada receita.
@@ -47,19 +56,50 @@ function paraIso(data: Date): string {
     return `${data.getFullYear()}-${mes}-${dia}`;
 }
 
+function aplicar(resposta: RespostaConferidas) {
+    prontas.value = resposta.prontas;
+    aguardando.value = resposta.aguardando;
+    pendente.value = null;
+}
+
+// Comparação barata para não anunciar novidade quando nada mudou. Entram
+// os campos que a tela mostra: uma fórmula a mais conferida move a receita
+// de aba, e isso é mudança.
+function assinatura(a: Conferida[], b: Conferida[]): string {
+    return [...a, ...b]
+        .map((r) => `${r.codigoRec}:${r.conferidas}/${r.total}:${r.jaAvisado ? 1 : 0}`)
+        .sort().join('|');
+}
+
+function assinaturaAtual(): string {
+    return assinatura(prontas.value, aguardando.value);
+}
+
+// Quais receitas da resposta ainda não estão na tela.
+const novas = computed(() => {
+    if (!pendente.value) return 0;
+    const naTela = new Set([...prontas.value, ...aguardando.value].map((r) => r.codigoRec));
+    return [...pendente.value.prontas, ...pendente.value.aguardando]
+        .filter((r) => !naTela.has(r.codigoRec)).length;
+});
+
 async function carregar() {
     carregando.value = true;
     erro.value = null;
     demorando.value = false;
+    pendente.value = null;
     // O Firebird já levou 21s em produção. Depois de 4s a tela avisa,
     // em vez de parecer travada.
     const avisar = setTimeout(() => { demorando.value = true; }, 4000);
+    const minha = ++geracao;
 
     try {
         const resposta = await buscarConferidas(paraIso(dataSelecionada.value));
-        prontas.value = resposta.prontas;
-        aguardando.value = resposta.aguardando;
+        if (minha !== geracao) return;
+        aplicar(resposta);
+        atualizadoEm.value = new Date();
     } catch (e) {
+        if (minha !== geracao) return;
         erro.value = e instanceof Error ? e.message : 'Não foi possível carregar.';
     } finally {
         clearTimeout(avisar);
@@ -68,7 +108,60 @@ async function carregar() {
     }
 }
 
-watch(dataSelecionada, carregar, { immediate: true });
+// Busca de fundo. Nunca mostra esqueleto, nunca apaga a lista boa e nunca
+// mostra erro: uma queda do Firebird no meio do expediente não pode limpar
+// a tela de quem está trabalhando. Se falhar, a hora congela e denuncia.
+async function espiar() {
+    if (carregando.value) return;
+    const minha = ++geracao;
+    try {
+        const resposta = await buscarConferidas(paraIso(dataSelecionada.value));
+        if (minha !== geracao) return;
+        atualizadoEm.value = new Date();
+        // Encaixar receita nova no meio da lista move os cartões debaixo do
+        // dedo da atendente, e o toque cai no cliente errado. Ela decide
+        // a hora de aplicar.
+        if (assinatura(resposta.prontas, resposta.aguardando) === assinaturaAtual()) return;
+        if (prontas.value.length === 0 && aguardando.value.length === 0) aplicar(resposta);
+        else pendente.value = resposta;
+    } catch {
+        // Silêncio proposital: a lista continua, e a hora parada avisa.
+    }
+}
+
+const horaAtualizacao = computed(() =>
+    atualizadoEm.value
+        ? atualizadoEm.value.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        : ''
+);
+
+// Dia passado não muda mais: o filtro é pela data da conferência.
+function ehHoje(): boolean {
+    return paraIso(dataSelecionada.value) === paraIso(new Date());
+}
+
+function agendar() {
+    if (relogio) clearInterval(relogio);
+    relogio = undefined;
+    if (!ehHoje()) return;
+    relogio = setInterval(() => {
+        if (document.visibilityState === 'visible') espiar();
+    }, INTERVALO_MS);
+}
+
+// Celular no bolso não roda timer. Ao voltar para a tela, busca na hora
+// em vez de esperar o próximo minuto.
+function aoVoltar() {
+    if (document.visibilityState === 'visible' && ehHoje()) espiar();
+}
+
+watch(dataSelecionada, () => { carregar(); agendar(); }, { immediate: true });
+
+onMounted(() => document.addEventListener('visibilitychange', aoVoltar));
+onUnmounted(() => {
+    document.removeEventListener('visibilitychange', aoVoltar);
+    if (relogio) clearInterval(relogio);
+});
 
 function abrir(codigo: number) {
     router.push({ name: 'receita', params: { codigo: String(codigo) } });
@@ -88,6 +181,11 @@ function abrir(codigo: number) {
 
             <div class="ferramentas">
                 <BarraCodigo class="codigo" @abrir="abrir" />
+                <button type="button" class="atualizar" :disabled="carregando" @click="carregar()">
+                    <span aria-hidden="true">↻</span>
+                    <span v-if="atualizadoEm" class="hora-att">{{ horaAtualizacao }}</span>
+                    <span v-else>Atualizar</span>
+                </button>
                 <div class="data">
                     <DatePicker
                         v-model="dataSelecionada"
@@ -118,6 +216,13 @@ function abrir(codigo: number) {
         </header>
 
         <p v-if="demorando" class="aviso">Está demorando mais que o normal. Aguarde.</p>
+
+        <button v-if="pendente" type="button" class="novidade" @click="aplicar(pendente)">
+            <template v-if="novas > 0">
+                {{ novas }} {{ novas === 1 ? 'receita nova' : 'receitas novas' }} · mostrar
+            </template>
+            <template v-else>A lista mudou · mostrar</template>
+        </button>
 
         <div v-if="carregando" class="grade">
             <Skeleton v-for="i in 6" :key="i" height="92px" border-radius="10px" />
@@ -153,6 +258,21 @@ h1 { margin: 4px 0 0; font-size: 1.6rem; }
 .ferramentas { display: flex; gap: 12px; align-items: center; margin: 18px 0 20px; flex-wrap: wrap; }
 .codigo { flex: 1; min-width: 260px; }
 .data { display: flex; align-items: center; gap: 10px; }
+.atualizar {
+    display: flex; align-items: center; gap: 7px; white-space: nowrap;
+    padding: 10px 14px; font: inherit; font-size: 0.85rem; cursor: pointer;
+    color: var(--cor-texto-suave); background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda); border-radius: 8px;
+}
+.atualizar:hover:not(:disabled) { color: var(--cor-marca); border-color: var(--cor-marca); }
+.atualizar:disabled { opacity: 0.5; cursor: default; }
+.hora-att { font-variant-numeric: tabular-nums; }
+
+.novidade {
+    display: block; width: 100%; margin-bottom: 16px;
+    padding: 11px 16px; font: inherit; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    color: #fff; background: var(--cor-marca); border: 0; border-radius: var(--raio);
+}
 .data-legivel { color: var(--cor-texto-suave); font-size: 0.85rem; white-space: nowrap; }
 
 .abas {
