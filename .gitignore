@@ -117,3 +117,5 @@ public/workbox-*.js
 public/registerSW.js
 public/manifest.webmanifest
 public/icons/
+# Copiado de web/public/ pelo build; a fonte mora la.
+public/tema-inicial.js
