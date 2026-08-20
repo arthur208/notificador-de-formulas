@@ -39,27 +39,33 @@ const TEMPLATES_PADRAO = {
             'para retirada em nossa loja. 💊✅\n\n' +
             'Ficamos à disposição e aguardamos sua visita!',
     },
+    // Sem prazo por decisão da gestora (20/08/2026): prometer data criava
+    // cobrança que a rota nem sempre cumpre. O prazo continua cadastrado em
+    // Cidades — foi só a mensagem que deixou de citá-lo.
     entrega: {
         cabecalho: CABECALHO_PADRAO,
         botoes: [BOTAO_CONFIRMAR, BOTAO_ENDERECO],
         corpo:
             '{{saudacao}}, {{nome}}! 👋\n\n' +
-            'Sua receita (Nº {{codigo}}) está pronta ' +
-            'e será enviada para entrega em {{cidade}}. 🚚✅\n\n' +
-            'Previsão de entrega: {{dias}}.\n\n' +
-            'Endereço de destino:\n{{endereco}}\n\nFicamos à disposição!',
+            'Sua receita (Nº {{codigo}}) está pronta e entrou na fila de ' +
+            'entrega para {{cidade}}. 🚚✅\n\n' +
+            'Endereço de destino:\n{{endereco}}\n\n' +
+            'Assim que ela sair para entrega avisamos por aqui. ' +
+            'Ficamos à disposição!',
     },
-    // Cidade sem prazo cadastrado. Não promete data — é o único texto de
-    // entrega que pode sair para as 47 cidades ainda não cadastradas.
+    // Mesmo texto de `entrega`: sem citar prazo, ter a cidade cadastrada ou
+    // não deixou de mudar o que o cliente lê. Continua separado para o dia
+    // em que a farmácia voltar a informar previsão.
     entrega_sem_prazo: {
         cabecalho: CABECALHO_PADRAO,
         botoes: [BOTAO_CONFIRMAR, BOTAO_ENDERECO],
         corpo:
             '{{saudacao}}, {{nome}}! 👋\n\n' +
-            'Sua receita (Nº {{codigo}}) está pronta ' +
-            'e será enviada para entrega. 🚚✅\n\n' +
+            'Sua receita (Nº {{codigo}}) está pronta e entrou na fila de ' +
+            'entrega para {{cidade}}. 🚚✅\n\n' +
             'Endereço de destino:\n{{endereco}}\n\n' +
-            'Assim que sair para entrega avisamos por aqui. Ficamos à disposição!',
+            'Assim que ela sair para entrega avisamos por aqui. ' +
+            'Ficamos à disposição!',
     },
     entrega_local: {
         cabecalho: CABECALHO_PADRAO,
@@ -75,8 +81,9 @@ const TEMPLATES_PADRAO = {
         botoes: [BOTAO_CONFIRMAR, BOTAO_ENDERECO],
         corpo:
             '{{saudacao}}, {{nome}}! 👋\n\n' +
-            'Sua receita (Nº {{codigo}}) foi enviada ' +
-            'e estará disponível para retirada {{local}} em {{dias}}. 💊✅\n\n' +
+            'Sua receita (Nº {{codigo}}) está pronta e será enviada ' +
+            'para retirada {{local}}. 💊✅\n\n' +
+            'Assim que ela chegar lá avisamos por aqui para você retirar.\n\n' +
             'Ficamos à disposição!',
     },
 };
