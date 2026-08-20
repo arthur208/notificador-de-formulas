@@ -157,5 +157,5 @@ h1 { font-size: 1.5rem; margin: 0; }
 }
 .modalidades button { text-transform: none; }
 .sem-permissao, .aviso-conexao { color: var(--cor-texto-suave); }
-.erro { color: #b91c1c; }
+.erro { color: var(--cor-erro); }
 </style>

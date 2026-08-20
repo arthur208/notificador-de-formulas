@@ -120,12 +120,12 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.07em; colo
 }
 .titulo { flex: 1; min-width: 140px; }
 .adicionar { background: none; border: 0; color: var(--cor-marca); font: inherit; cursor: pointer; padding: 8px 0; }
-.remover { background: none; border: 0; color: #b91c1c; font: inherit; cursor: pointer; }
+.remover { background: none; border: 0; color: var(--cor-erro); font: inherit; cursor: pointer; }
 .acoes { display: flex; align-items: center; gap: 12px; margin-top: 24px; }
 .salvar {
     padding: 12px 22px; font: inherit; font-weight: 600;
-    background: var(--cor-marca); color: #fff; border: 0; border-radius: var(--raio);
+    background: var(--cor-marca); color: var(--cor-sobre-marca); border: 0; border-radius: var(--raio);
 }
 .ok { color: var(--cor-completo); font-size: 0.85rem; }
-.erro { color: #b91c1c; }
+.erro { color: var(--cor-erro); }
 </style>

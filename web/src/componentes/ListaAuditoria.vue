@@ -86,5 +86,5 @@ function resumo(registro: RegistroAuditoria): string {
     word-break: break-word;
 }
 .vazio { color: var(--cor-texto-suave); }
-.erro { color: #b91c1c; }
+.erro { color: var(--cor-erro); }
 </style>

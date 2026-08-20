@@ -220,9 +220,9 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.07em; colo
     border: 1px solid var(--cor-borda); border-radius: 6px; background: var(--cor-fundo);
 }
 .contador { font-size: 0.75rem; color: var(--cor-texto-suave); font-variant-numeric: tabular-nums; }
-.contador.estourou { color: #b45309; font-weight: 600; }
+.contador.estourou { color: var(--cor-alerta); font-weight: 600; }
 .exemplo { font-family: var(--fonte-dados); font-size: 0.78rem; }
-.alerta { display: block; margin-top: 4px; color: #b45309; }
+.alerta { display: block; margin-top: 4px; color: var(--cor-alerta); }
 .campo { width: 100%; font-family: var(--fonte-dados); font-size: 0.9rem; }
 .dica { font-size: 0.8rem; color: var(--cor-texto-suave); margin: 12px 0 6px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -243,13 +243,13 @@ h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.07em; colo
 }
 .titulo-campo { flex: 1; min-width: 130px; }
 .adicionar { background: none; border: 0; color: var(--cor-marca); font: inherit; cursor: pointer; padding: 6px 0; }
-.remover { background: none; border: 0; color: #b91c1c; font: inherit; cursor: pointer; }
+.remover { background: none; border: 0; color: var(--cor-erro); font: inherit; cursor: pointer; }
 .salvar {
     padding: 12px 22px; font: inherit; font-weight: 600;
-    background: var(--cor-marca); color: #fff; border: 0; border-radius: var(--raio);
+    background: var(--cor-marca); color: var(--cor-sobre-marca); border: 0; border-radius: var(--raio);
 }
 .ok { color: var(--cor-completo); font-size: 0.85rem; }
-.erro { color: #b91c1c; font-size: 0.85rem; }
+.erro { color: var(--cor-erro); font-size: 0.85rem; }
 
 @media (max-width: 900px) {
     .editor { grid-template-columns: 1fr; }

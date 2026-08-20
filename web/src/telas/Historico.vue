@@ -139,7 +139,7 @@ h1 { font-size: 1.4rem; margin: 0; }
     border-radius: var(--raio); padding: 12px 14px; margin-bottom: 10px;
 }
 .cartao.sucesso { border-left-color: var(--cor-completo); }
-.cartao.erro { border-left-color: #b91c1c; }
+.cartao.erro { border-left-color: var(--cor-erro); }
 .nome { margin: 0 0 4px; font-weight: 600; }
 .meta { margin: 0; font-size: 0.8rem; color: var(--cor-texto-suave); }
 .estado {
@@ -147,7 +147,7 @@ h1 { font-size: 1.4rem; margin: 0; }
     font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em;
     color: var(--cor-texto-suave);
 }
-.cartao.erro .estado { color: #b91c1c; }
+.cartao.erro .estado { color: var(--cor-erro); }
 .mais {
     width: 100%; padding: 13px; margin-top: 10px; font: inherit;
     background: transparent; border: 1px solid var(--cor-borda);
@@ -155,5 +155,5 @@ h1 { font-size: 1.4rem; margin: 0; }
 }
 .vao { margin-bottom: 10px; }
 .vazio, .erro { color: var(--cor-texto-suave); }
-.erro { color: #b91c1c; }
+.erro { color: var(--cor-erro); }
 </style>

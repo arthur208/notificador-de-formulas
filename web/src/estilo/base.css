@@ -1,3 +1,5 @@
+/* Paleta clara. O tema escuro redefine os mesmos nomes lá embaixo, então
+   componente nenhum precisa saber qual tema está valendo. */
 :root {
     --cor-fundo: #f7f7f5;
     --cor-superficie: #ffffff;
@@ -5,14 +7,71 @@
     --cor-texto: #1c1c1a;
     --cor-texto-suave: #6b6b64;
     --cor-marca: #00796b;
+    /* Texto e ícone por cima da cor da marca. No claro é branco; no escuro
+       a marca clareia e o contraste só fecha com texto escuro. */
+    --cor-sobre-marca: #ffffff;
     --cor-completo: #00796b;
     --cor-pendente: #d9d9d2;
     --cor-alerta: #b45309;
+
+    --cor-erro: #b91c1c;
+    --cor-erro-fundo: #fef2f2;
+    --cor-erro-borda: #fecaca;
+
+    --cor-aviso: #92400e;
+    --cor-aviso-fundo: #fff7ed;
+    --cor-aviso-borda: #fed7aa;
+
+    --cor-ok: #166534;
+    --cor-ok-fundo: #dcfce7;
+
+    /* Selos de modalidade. Cada um mantém o matiz nos dois temas para
+       continuarem reconhecíveis de relance. */
+    --selo-retirada-fundo: #e0e7ff;  --selo-retirada-texto: #3730a3;
+    --selo-entrega-fundo:  #ffedd5;  --selo-entrega-texto:  #9a3412;
+    --selo-local-fundo:    #cffafe;  --selo-local-texto:    #155e75;
+    --selo-convenio-fundo: #f3e8ff;  --selo-convenio-texto: #6b21a8;
+    --selo-neutro-fundo:   #fef3c7;  --selo-neutro-texto:   #92400e;
+
     --raio: 10px;
     --espaco: 16px;
 
     --fonte-interface: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     --fonte-dados: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
+}
+
+/* A classe vai no <html>. É o mesmo seletor que o PrimeVue recebe em
+   main.ts, para o tema dos componentes dele virar junto com o nosso. */
+.tema-escuro {
+    --cor-fundo: #14161a;
+    --cor-superficie: #1c1f24;
+    --cor-borda: #2f343c;
+    --cor-texto: #e6e7e4;
+    --cor-texto-suave: #9aa1aa;
+    --cor-marca: #2dd4bf;
+    --cor-sobre-marca: #04231f;
+    --cor-completo: #2dd4bf;
+    --cor-pendente: #333941;
+    --cor-alerta: #f0a04b;
+
+    --cor-erro: #fca5a5;
+    --cor-erro-fundo: #3b1b1b;
+    --cor-erro-borda: #7f2626;
+
+    --cor-aviso: #fcd34d;
+    --cor-aviso-fundo: #35280f;
+    --cor-aviso-borda: #7a5a12;
+
+    --cor-ok: #86efac;
+    --cor-ok-fundo: #14331f;
+
+    --selo-retirada-fundo: #262b4a;  --selo-retirada-texto: #a5b4fc;
+    --selo-entrega-fundo:  #3a2a15;  --selo-entrega-texto:  #fdba74;
+    --selo-local-fundo:    #123039;  --selo-local-texto:    #67e8f9;
+    --selo-convenio-fundo: #2f1f42;  --selo-convenio-texto: #d8b4fe;
+    --selo-neutro-fundo:   #35280f;  --selo-neutro-texto:   #fcd34d;
+
+    color-scheme: dark;
 }
 
 * { box-sizing: border-box; }

@@ -313,7 +313,7 @@ async function enviar() {
 h1 { margin: 0 0 4px; font-size: 1.4rem; }
 .modalidade { margin: 0 0 20px; color: var(--cor-marca); font-size: 0.85rem; }
 .ja-avisado {
-    background: #fff7ed; border: 1px solid #fed7aa; color: var(--cor-alerta);
+    background: var(--cor-aviso-fundo); border: 1px solid var(--cor-aviso-borda); color: var(--cor-alerta);
     border-radius: var(--raio); padding: 10px 12px; font-size: 0.85rem;
 }
 h2 {
@@ -331,10 +331,10 @@ h2 {
 .checando { text-transform: none; letter-spacing: 0; font-weight: 400; margin-left: 8px; }
 
 .selo { font-size: 0.72rem; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
-.selo.tem { background: #dcfce7; color: #166534; }
-.selo.nao_tem { background: #fee2e2; color: #991b1b; }
+.selo.tem { background: var(--cor-ok-fundo); color: var(--cor-ok); }
+.selo.nao_tem { background: var(--cor-erro-fundo); color: var(--cor-erro); }
 .selo.desconhecido { background: var(--cor-borda); color: var(--cor-texto-suave); }
-.selo.invalido { background: #fef3c7; color: #92400e; }
+.selo.invalido { background: var(--selo-neutro-fundo); color: var(--cor-aviso); }
 
 .outro { background: none; border: 0; color: var(--cor-marca); font: inherit; cursor: pointer; padding: 6px 0; }
 .linha-avulso { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
@@ -344,13 +344,13 @@ h2 {
 }
 .checar {
     padding: 13px 18px; font: inherit; font-weight: 600;
-    background: var(--cor-marca); color: #fff; border: 0; border-radius: var(--raio); cursor: pointer;
+    background: var(--cor-marca); color: var(--cor-sobre-marca); border: 0; border-radius: var(--raio); cursor: pointer;
 }
 .checar:disabled { background: var(--cor-pendente); color: var(--cor-texto-suave); }
 .cancelar { background: none; border: 0; color: var(--cor-texto-suave); font: inherit; cursor: pointer; }
 .alerta-numero {
     margin: 10px 0 0; padding: 10px 12px; font-size: 0.85rem;
-    background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: var(--raio);
+    background: var(--cor-erro-fundo); border: 1px solid var(--cor-erro-borda); color: var(--cor-erro); border-radius: var(--raio);
 }
 .previa { margin: 0 auto; }
 .dica-texto { margin: 10px 0 0; font-size: 0.78rem; color: var(--cor-texto-suave); text-align: center; }
@@ -374,12 +374,12 @@ h2 {
 }
 .enviar {
     width: 100%; padding: 16px; font: inherit; font-weight: 600; font-size: 1rem;
-    background: var(--cor-marca); color: #fff; border: 0; border-radius: var(--raio);
+    background: var(--cor-marca); color: var(--cor-sobre-marca); border: 0; border-radius: var(--raio);
 }
 .enviar:disabled { background: var(--cor-pendente); color: var(--cor-texto-suave); }
 .vazio { color: var(--cor-texto-suave); }
 .tentar {
     margin-top: 8px; padding: 10px 16px; font: inherit;
-    background: var(--cor-marca); color: #fff; border: 0; border-radius: var(--raio);
+    background: var(--cor-marca); color: var(--cor-sobre-marca); border: 0; border-radius: var(--raio);
 }
 </style>

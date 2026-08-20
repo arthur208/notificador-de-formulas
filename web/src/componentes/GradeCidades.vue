@@ -174,7 +174,7 @@ input:disabled { background: var(--cor-borda); color: var(--cor-texto-suave); }
 input[type='checkbox'] { accent-color: var(--cor-marca); width: 16px; height: 16px; }
 .adicionar {
     padding: 11px 22px; font: inherit; font-weight: 600;
-    background: var(--cor-marca); color: #fff; border: 0; border-radius: 6px;
+    background: var(--cor-marca); color: var(--cor-sobre-marca); border: 0; border-radius: 6px;
 }
 .adicionar:disabled { background: var(--cor-pendente); color: var(--cor-texto-suave); }
 .dica { font-size: 0.8rem; color: var(--cor-texto-suave); margin: 0 0 24px; }
@@ -191,7 +191,7 @@ th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; colo
 .uf { color: var(--cor-texto-suave); font-size: 0.85rem; }
 .dias { width: 68px; }
 .sem-prazo { margin-left: 8px; font-size: 0.78rem; color: var(--cor-texto-suave); }
-.remover { background: none; border: 0; color: #b91c1c; font: inherit; cursor: pointer; padding: 0; }
+.remover { background: none; border: 0; color: var(--cor-erro); font: inherit; cursor: pointer; padding: 0; }
 .vazio { color: var(--cor-texto-suave); font-size: 0.9rem; }
-.erro { color: #b91c1c; }
+.erro { color: var(--cor-erro); }
 </style>

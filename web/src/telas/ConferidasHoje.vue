@@ -346,7 +346,7 @@ h1 { margin: 4px 0 0; font-size: 1.6rem; }
 .novidade {
     display: block; width: 100%; margin-bottom: 16px;
     padding: 11px 16px; font: inherit; font-size: 0.9rem; font-weight: 600; cursor: pointer;
-    color: #fff; background: var(--cor-marca); border: 0; border-radius: var(--raio);
+    color: var(--cor-sobre-marca); background: var(--cor-marca); border: 0; border-radius: var(--raio);
 }
 .data-legivel { color: var(--cor-texto-suave); font-size: 0.85rem; white-space: nowrap; }
 
@@ -372,13 +372,13 @@ h1 { margin: 4px 0 0; font-size: 1.6rem; }
 /* Ativo assume a cor do selo do cartão: o filtro e o que ele filtra
    precisam ser reconhecíveis como a mesma coisa. */
 .filtro.ativo { font-weight: 600; }
-.filtro.todas.ativo { background: var(--cor-marca); border-color: var(--cor-marca); color: #fff; }
-.filtro.retirada.ativo { background: #e0e7ff; border-color: #a5b4fc; color: #3730a3; }
-.filtro.entrega.ativo { background: #ffedd5; border-color: #fdba74; color: #9a3412; }
-.filtro.entrega_local.ativo { background: #cffafe; border-color: #67e8f9; color: #155e75; }
-.filtro.convenio.ativo { background: #f3e8ff; border-color: #d8b4fe; color: #6b21a8; }
+.filtro.todas.ativo { background: var(--cor-marca); border-color: var(--cor-marca); color: var(--cor-sobre-marca); }
+.filtro.retirada.ativo { background: var(--selo-retirada-fundo); border-color: var(--selo-retirada-texto); color: var(--selo-retirada-texto); }
+.filtro.entrega.ativo { background: var(--selo-entrega-fundo); border-color: var(--selo-entrega-texto); color: var(--selo-entrega-texto); }
+.filtro.entrega_local.ativo { background: var(--selo-local-fundo); border-color: var(--selo-local-texto); color: var(--selo-local-texto); }
+.filtro.convenio.ativo { background: var(--selo-convenio-fundo); border-color: var(--selo-convenio-texto); color: var(--selo-convenio-texto); }
 .filtro.ativo .quantos { background: rgb(255 255 255 / 0.55); }
-.filtro.todas.ativo .quantos { background: rgb(255 255 255 / 0.25); color: #fff; }
+.filtro.todas.ativo .quantos { background: rgb(255 255 255 / 0.25); color: var(--cor-sobre-marca); }
 .aba {
     display: flex; align-items: center; gap: 8px;
     padding: 11px 14px; margin-bottom: -1px;
@@ -391,8 +391,8 @@ h1 { margin: 4px 0 0; font-size: 1.6rem; }
     background: var(--cor-borda); color: var(--cor-texto);
     border-radius: 20px; padding: 1px 8px; font-size: 0.75rem; font-weight: 400;
 }
-.aba.avisar.ativa .conta { background: var(--cor-marca); color: #fff; }
-.aba.aguardando.ativa .conta { background: var(--cor-alerta); color: #fff; }
+.aba.avisar.ativa .conta { background: var(--cor-marca); color: var(--cor-sobre-marca); }
+.aba.aguardando.ativa .conta { background: var(--cor-alerta); color: var(--cor-fundo); }
 
 /* Coluna única no celular; no desktop a largura vira mais cartão por linha,
    em vez de uma coluna estreita com muito vazio dos lados. */
@@ -405,6 +405,6 @@ h1 { margin: 4px 0 0; font-size: 1.6rem; }
 .aviso { color: var(--cor-alerta); font-size: 0.85rem; }
 .tentar {
     margin-top: 8px; padding: 10px 16px; font: inherit;
-    background: var(--cor-marca); color: #fff; border: 0; border-radius: var(--raio);
+    background: var(--cor-marca); color: var(--cor-sobre-marca); border: 0; border-radius: var(--raio);
 }
 </style>

@@ -182,7 +182,7 @@ input, select {
 .troca-senha input { min-width: 260px; }
 .confirmar {
     padding: 9px 16px; font: inherit; font-weight: 600;
-    background: var(--cor-marca); color: #fff; border: 0; border-radius: 6px;
+    background: var(--cor-marca); color: var(--cor-sobre-marca); border: 0; border-radius: 6px;
 }
 .cancelar { background: none; border: 0; color: var(--cor-texto-suave); font: inherit; cursor: pointer; }
 .dica { width: 100%; margin: 0; font-size: 0.78rem; color: var(--cor-texto-suave); }
@@ -191,7 +191,7 @@ h3 { margin-top: 32px; font-size: 0.78rem; text-transform: uppercase; letter-spa
 .novo { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .adicionar {
     padding: 9px 18px; font: inherit; font-weight: 600;
-    background: var(--cor-marca); color: #fff; border: 0; border-radius: 6px;
+    background: var(--cor-marca); color: var(--cor-sobre-marca); border: 0; border-radius: 6px;
 }
 .adicionar:disabled { background: var(--cor-pendente); color: var(--cor-texto-suave); }
 
@@ -201,5 +201,5 @@ h3 { margin-top: 32px; font-size: 0.78rem; text-transform: uppercase; letter-spa
 }
 .papeis dt { font-weight: 600; color: var(--cor-texto); text-transform: capitalize; }
 .papeis dd { margin: 0; }
-.erro { color: #b91c1c; }
+.erro { color: var(--cor-erro); }
 </style>

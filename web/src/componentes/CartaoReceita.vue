@@ -75,14 +75,14 @@ function acionar() {
     font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 20px;
     text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
 }
-.selo.retirada { background: #e0e7ff; color: #3730a3; }
-.selo.entrega, .selo.entrega_sem_prazo { background: #ffedd5; color: #9a3412; }
-.selo.entrega_local { background: #cffafe; color: #155e75; }
-.selo.convenio { background: #f3e8ff; color: #6b21a8; }
+.selo.retirada { background: var(--selo-retirada-fundo); color: var(--selo-retirada-texto); }
+.selo.entrega, .selo.entrega_sem_prazo { background: var(--selo-entrega-fundo); color: var(--selo-entrega-texto); }
+.selo.entrega_local { background: var(--selo-local-fundo); color: var(--selo-local-texto); }
+.selo.convenio { background: var(--selo-convenio-fundo); color: var(--selo-convenio-texto); }
 .detalhe { font-size: 0.75rem; color: var(--cor-texto-suave); }
 .sem-prazo {
     font-size: 0.68rem; padding: 2px 7px; border-radius: 20px;
-    background: #fef3c7; color: #92400e; white-space: nowrap;
+    background: var(--selo-neutro-fundo); color: var(--cor-aviso); white-space: nowrap;
 }
 .cartao.pendente .selo { opacity: 0.65; }
 

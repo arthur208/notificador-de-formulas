@@ -2,6 +2,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { usuarioAtual, podeGerir, sair } from '@/estado/sessao';
+import { tema, alternarTema } from '@/estado/tema';
 
 const router = useRouter();
 const aberto = ref(false);
@@ -30,6 +31,14 @@ onBeforeUnmount(() => document.removeEventListener('click', cliqueFora));
     <div ref="raiz" class="menu">
         <button
             type="button"
+            class="gatilho tema"
+            :aria-label="tema === 'escuro' ? 'Usar tema claro' : 'Usar tema escuro'"
+            :title="tema === 'escuro' ? 'Usar tema claro' : 'Usar tema escuro'"
+            @click="alternarTema"
+        >{{ tema === 'escuro' ? '☀' : '☾' }}</button>
+
+        <button
+            type="button"
             class="gatilho"
             :aria-expanded="aberto"
             aria-label="Abrir menu"
@@ -55,12 +64,14 @@ onBeforeUnmount(() => document.removeEventListener('click', cliqueFora));
 </template>
 
 <style scoped>
-.menu { position: relative; }
+.menu { position: relative; display: flex; align-items: center; gap: 6px; }
 .gatilho {
     background: none; border: 1px solid var(--cor-borda); border-radius: var(--raio);
     padding: 8px 12px; font-size: 1.1rem; cursor: pointer; color: var(--cor-texto);
     line-height: 1;
 }
+.tema { color: var(--cor-texto-suave); }
+.tema:hover { color: var(--cor-marca); border-color: var(--cor-marca); }
 .painel {
     position: absolute; right: 0; top: calc(100% + 6px); z-index: 20;
     min-width: 210px; padding: 6px;
@@ -79,5 +90,5 @@ onBeforeUnmount(() => document.removeEventListener('click', cliqueFora));
 }
 .painel button:hover { background: var(--cor-fundo); }
 hr { border: 0; border-top: 1px solid var(--cor-borda); margin: 6px 4px; }
-.sair { color: #b91c1c; }
+.sair { color: var(--cor-erro); }
 </style>

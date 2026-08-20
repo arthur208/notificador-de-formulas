@@ -217,7 +217,7 @@ input[type='checkbox'] { accent-color: var(--cor-marca); width: 16px; height: 16
 .formulario input:not([type='checkbox']) { width: 100%; min-width: 0; }
 .adicionar {
     padding: 11px 22px; font: inherit; font-weight: 600;
-    background: var(--cor-marca); color: #fff; border: 0; border-radius: 6px;
+    background: var(--cor-marca); color: var(--cor-sobre-marca); border: 0; border-radius: 6px;
 }
 .adicionar:disabled { background: var(--cor-pendente); color: var(--cor-texto-suave); }
 .dica { font-size: 0.8rem; color: var(--cor-texto-suave); margin: 0 0 24px; }
@@ -237,12 +237,12 @@ th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; colo
 .acoes { display: flex; gap: 12px; white-space: nowrap; }
 .extras, .adicionar-var { background: none; border: 0; color: var(--cor-marca); font: inherit; cursor: pointer; padding: 0; }
 .qtd { background: var(--cor-borda); border-radius: 20px; padding: 0 6px; font-size: 0.72rem; color: var(--cor-texto); }
-.remover { background: none; border: 0; color: #b91c1c; font: inherit; cursor: pointer; padding: 0; }
+.remover { background: none; border: 0; color: var(--cor-erro); font: inherit; cursor: pointer; padding: 0; }
 
 .linha-extras td { background: var(--cor-fundo); }
 .variavel { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
 .chave { width: 160px; }
 .valor { flex: 1; }
 .vazio { color: var(--cor-texto-suave); font-size: 0.9rem; }
-.erro { color: #b91c1c; }
+.erro { color: var(--cor-erro); }
 </style>

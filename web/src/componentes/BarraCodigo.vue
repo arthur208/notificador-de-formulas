@@ -81,7 +81,7 @@ function receberDaCamera(texto: string) {
 }
 .acao {
     padding: 13px 22px; font: inherit; font-weight: 600; white-space: nowrap;
-    background: var(--cor-marca); color: #fff;
+    background: var(--cor-marca); color: var(--cor-sobre-marca);
     border: 0; border-radius: var(--raio);
 }
 </style>

@@ -62,10 +62,10 @@ input {
     border: 1px solid var(--cor-borda); border-radius: var(--raio);
     background: var(--cor-fundo); color: var(--cor-texto);
 }
-.erro { color: #b91c1c; font-size: 0.85rem; margin: 14px 0 0; }
+.erro { color: var(--cor-erro); font-size: 0.85rem; margin: 14px 0 0; }
 button {
     width: 100%; margin-top: 20px; padding: 14px; font: inherit; font-weight: 600;
-    background: var(--cor-marca); color: #fff; border: 0; border-radius: var(--raio);
+    background: var(--cor-marca); color: var(--cor-sobre-marca); border: 0; border-radius: var(--raio);
 }
 button:disabled { background: var(--cor-pendente); color: var(--cor-texto-suave); }
 </style>
