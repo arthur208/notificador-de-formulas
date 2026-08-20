@@ -47,11 +47,10 @@ const TEMPLATES_PADRAO = {
         botoes: [BOTAO_CONFIRMAR, BOTAO_ENDERECO],
         corpo:
             '{{saudacao}}, {{nome}}! 👋\n\n' +
-            'Sua receita (Nº {{codigo}}) está pronta e entrou na fila de ' +
-            'entrega para {{cidade}}. 🚚✅\n\n' +
+            'Sua receita (Nº {{codigo}}) está pronta e será enviada para ' +
+            'entrega em {{cidade}}. 🚚✅\n\n' +
             'Endereço de destino:\n{{endereco}}\n\n' +
-            'Assim que ela sair para entrega avisamos por aqui. ' +
-            'Ficamos à disposição!',
+            'Qualquer dúvida é só chamar por aqui. Ficamos à disposição!',
     },
     // Mesmo texto de `entrega`: sem citar prazo, ter a cidade cadastrada ou
     // não deixou de mudar o que o cliente lê. Continua separado para o dia
@@ -61,11 +60,10 @@ const TEMPLATES_PADRAO = {
         botoes: [BOTAO_CONFIRMAR, BOTAO_ENDERECO],
         corpo:
             '{{saudacao}}, {{nome}}! 👋\n\n' +
-            'Sua receita (Nº {{codigo}}) está pronta e entrou na fila de ' +
-            'entrega para {{cidade}}. 🚚✅\n\n' +
+            'Sua receita (Nº {{codigo}}) está pronta e será enviada para ' +
+            'entrega em {{cidade}}. 🚚✅\n\n' +
             'Endereço de destino:\n{{endereco}}\n\n' +
-            'Assim que ela sair para entrega avisamos por aqui. ' +
-            'Ficamos à disposição!',
+            'Qualquer dúvida é só chamar por aqui. Ficamos à disposição!',
     },
     entrega_local: {
         cabecalho: CABECALHO_PADRAO,
@@ -83,8 +81,7 @@ const TEMPLATES_PADRAO = {
             '{{saudacao}}, {{nome}}! 👋\n\n' +
             'Sua receita (Nº {{codigo}}) está pronta e será enviada ' +
             'para retirada {{local}}. 💊✅\n\n' +
-            'Assim que ela chegar lá avisamos por aqui para você retirar.\n\n' +
-            'Ficamos à disposição!',
+            'Qualquer dúvida é só chamar por aqui. Ficamos à disposição!',
     },
 };
 
