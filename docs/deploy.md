@@ -267,5 +267,19 @@ na memória do processo — reiniciar o serviço zera a contagem.
 ou de proxy, não da aplicação. Bloquear a porta 3008 para fora da rede da
 farmácia é mais barato e mais confiável do que qualquer filtro em código.
 
+**O botão de instalar o app não aparece** — o navegador só oferece instalar
+um PWA em contexto seguro. `http://` por IP não é: o service worker nem chega
+a registrar, e sem ele não há instalação. `localhost` é a única exceção, o que
+serve para testar no próprio servidor e não ajuda no balcão.
+
+Os ícones já são válidos (192, 512 e um maskable de 512, gerados por
+`scripts/gerar-icones.js`), o manifest está completo e o service worker é
+servido — o que falta é só HTTPS. Confira o que o navegador vê com:
+
+```js
+window.isSecureContext                       // precisa ser true
+navigator.serviceWorker.getRegistrations()   // precisa ter 1
+```
+
 **Firebird recusa conexão de vez em quando** — falha intermitente conhecida,
 sem causa identificada, que se recupera sozinha. Se persistir, é o ERP.
