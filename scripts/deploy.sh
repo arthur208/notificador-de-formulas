@@ -88,8 +88,24 @@ passo "Construindo o front"
 npm run build
 
 # --------------------------------------------------------------- 5. testes
+# O Firebird recusa conexão de vez em quando — falha conhecida, sem causa
+# identificada, que se recupera sozinha. Sem esta segunda tentativa, um
+# tropeço de rede reverteria um deploy perfeitamente bom.
 passo "Rodando os testes"
-npm test 2>&1 | tail -8
+if npm test > /tmp/notificador-testes.log 2>&1; then
+    grep -E '^ℹ (tests|pass|fail)' /tmp/notificador-testes.log
+else
+    nota "falhou na primeira tentativa — repetindo uma vez"
+    grep -E '^✖|Firebird' /tmp/notificador-testes.log | head -4
+    if npm test > /tmp/notificador-testes.log 2>&1; then
+        grep -E '^ℹ (tests|pass|fail)' /tmp/notificador-testes.log
+        nota "passou na segunda. Provável instabilidade do Firebird."
+    else
+        erro "os testes falharam duas vezes seguidas:"
+        sed -n '/failing tests:/,$p' /tmp/notificador-testes.log | head -30
+        exit 1
+    fi
+fi
 
 # --------------------------------------------------------------- 6. ambiente
 passo "Conferindo ambiente (bancos, credenciais, semeaduras)"
