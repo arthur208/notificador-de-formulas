@@ -16,12 +16,22 @@ histórico de envios é preservado: a coleção continua sendo a mesma.
 | Node 20+ | `node -v` |
 | pm2 | `pm2 -v` |
 | git | `git --version` |
-| mongodb-database-tools | `mongodump --version` (opcional, mas o deploy faz backup com ele) |
+| mongodb-database-tools | `mongodump --version` — **opcional**: sem ele o deploy usa `scripts/backup-mongo.js`, que faz o mesmo com o driver do próprio sistema |
 | Acesso ao Firebird do ERP | porta 3050 |
 | Acesso ao Mongo | `192.168.0.249:27017` |
 | Saída para a internet | `api2.multiatendweb.com.br` |
 
-### 1.2 Clonar
+### 1.2 Tirar backup antes de tudo
+
+```bash
+node scripts/backup-mongo.js --banco notificador_logs
+```
+
+Grava um arquivo por coleção em `backups/`, em EJSON — que preserva
+`ObjectId`, `Date` e os demais tipos. JSON comum transformaria data em texto
+e a restauração devolveria documento diferente do original.
+
+### 1.3 Clonar
 
 ```bash
 cd /opt          # ou onde o sistema antigo já mora
@@ -36,7 +46,7 @@ solta — o deploy recusa subir com o diretório sujo:
 git status --short
 ```
 
-### 1.3 Criar o `.env`
+### 1.4 Criar o `.env`
 
 O `.env` **não vem no git**. Crie a partir do exemplo:
 
@@ -95,7 +105,7 @@ Trocá-la depois torna o que está gravado ilegível — se isso acontecer, rode
 
 `API_URL` é do webhook antigo e não é mais usada. Pode ficar vazia.
 
-### 1.4 Instalar e construir
+### 1.5 Instalar e construir
 
 ```bash
 npm ci --omit=dev
@@ -106,7 +116,7 @@ npm run build
 O `public/` é saída de build e não é versionado. Sem este passo o servidor
 entrega o front antigo.
 
-### 1.5 Semear o que o sistema precisa para funcionar
+### 1.6 Semear o que o sistema precisa para funcionar
 
 ```bash
 node scripts/semear-templates.js   # os 5 textos padrão
@@ -123,7 +133,7 @@ Enquanto nenhuma cidade estiver cadastrada, toda entrega sai sem prazo — o que
 últimos 12 meses: Santa Cruz do Monte Castelo, Porto Rico, São Pedro do Paraná,
 Santa Isabel do Ivaí, Santa Mônica. E **Loanda marcada como entrega local**.
 
-### 1.6 Conferir antes de deixar no ar
+### 1.7 Conferir antes de deixar no ar
 
 ```bash
 node scripts/verificar-ambiente.js
@@ -132,7 +142,7 @@ node scripts/verificar-ambiente.js
 Toca em tudo: configuração, Mongo, Firebird, autenticação na API de envio,
 semeaduras e front construído. Sai com erro se algo estiver bloqueando.
 
-### 1.7 Pôr no pm2
+### 1.8 Pôr no pm2
 
 Se já existe um processo do sistema antigo, pare e remova:
 
@@ -178,10 +188,24 @@ git log --oneline -5
 ```
 
 Se o problema for de dados e não de código, os backups ficam em
-`/var/backups/notificador/<data>`:
+`~/backups-notificador/<data>` (ou onde `DIR_BACKUP` apontar).
+
+Feito pelo script em Node — o caso comum, já que o `mongodump` raramente
+está instalado:
 
 ```bash
-mongorestore --uri="$MONGO_URI" --drop /var/backups/notificador/20260819-143000/notificador_logs
+node scripts/backup-mongo.js \
+  --restaurar ~/backups-notificador/20260828-094000 \
+  --confirmar-banco notificador_logs
+```
+
+Repetir o nome do banco é obrigatório: restaurar **apaga** as coleções antes
+de repor. Sem o `--confirmar-banco`, o script recusa e mostra o comando certo.
+
+Feito com mongodump:
+
+```bash
+mongorestore --uri="$MONGO_URI" --drop ~/backups-notificador/<data>/notificador_logs
 ```
 
 ---

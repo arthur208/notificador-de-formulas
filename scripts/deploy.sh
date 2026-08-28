@@ -56,17 +56,18 @@ fi
 
 # --------------------------------------------------------------- 1. backup
 passo "Guardando cópia do banco antes de mexer"
+DESTINO="${DIR_BACKUP:-$HOME/backups-notificador}/$(date +%Y%m%d-%H%M%S)"
+# O mongodump vem no pacote mongodb-database-tools, que costuma não estar
+# instalado. Em vez de exigir instalação em máquina de produção, caímos no
+# script em Node, que usa o driver que o sistema já tem.
 if command -v mongodump >/dev/null; then
-    DESTINO="/var/backups/notificador/$(date +%Y%m%d-%H%M%S)"
     mkdir -p "$DESTINO"
-    # Só o banco do notificador; o servidor Mongo hospeda outros sistemas.
     URI="$(node -e 'require("dotenv").config();console.log(process.env.MONGO_URI)')"
     BANCO="$(node -e 'require("dotenv").config();console.log(process.env.MONGO_DB_NAME)')"
     mongodump --uri="$URI" --db="$BANCO" --out="$DESTINO" --quiet
-    echo "    em $DESTINO"
+    echo "    mongodump em $DESTINO"
 else
-    nota "mongodump não instalado — seguindo SEM backup do banco."
-    nota "instale mongodb-database-tools quando puder."
+    node scripts/backup-mongo.js --destino "$DESTINO"
 fi
 
 # --------------------------------------------------------------- 2. código

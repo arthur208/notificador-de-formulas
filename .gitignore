@@ -119,3 +119,6 @@ public/manifest.webmanifest
 public/icons/
 # Copiado de web/public/ pelo build; a fonte mora la.
 public/tema-inicial.js
+
+# Backups do Mongo gerados por scripts/backup-mongo.js — dados de cliente.
+backups/
