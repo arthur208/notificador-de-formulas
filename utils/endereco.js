@@ -34,4 +34,4 @@ function montarEndereco(dados) {
     return texto === '' ? null : texto;
 }
 
-module.exports = { montarEndereco };
+module.exports = { montarEndereco, limpar };

@@ -300,6 +300,9 @@ async function conveniosDasReceitas(codigos) {
 }
 
 module.exports = {
+    // Exposto para services/clienteService.js: o wrapper carrega a guarda de
+    // timeout que impede conexão vazada, e reimplementar isso seria pior.
+    queryFb,
     getRecipeData,
     getDeliveryData,
     getReceitasConferidas,

@@ -27,6 +27,7 @@ app.use(express.static('public')); // 4º: Serve os arquivos estáticos (index.h
 
 // --- Rotas da API ---
 // Todas as rotas em /routes/api.js serão prefixadas com /api
+app.use('/api/integracao', require('./routes/integracao'));
 app.use('/api/config', require('./routes/config'));
 app.use('/api', apiRoutes);
 
@@ -56,6 +57,7 @@ async function startServer() {
         await require('./services/cidadeService').garantirIndices();
         await require('./services/convenioService').garantirIndices();
         await require('./services/numeroService').garantirIndices();
+        await require('./services/tokenApiService').garantirIndices();
 
         // (Passo do PostgreSQL removido)
 
