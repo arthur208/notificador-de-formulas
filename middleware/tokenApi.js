@@ -1,57 +1,58 @@
-const tokenApiService = require('../services/tokenApiService');
+const crypto = require('node:crypto');
+const { config } = require('../config/db');
 const limite = require('../utils/limiteTentativas');
 
 // Autenticação das rotas de integração. Separada da sessão de propósito:
 // aqui quem chama é máquina, e máquina não tem cookie nem navegador.
 //
-// Vale só em /api/integracao. As rotas que a tela usa continuam exigindo
-// sessão — um token vazado não pode virar acesso ao sistema inteiro.
-function exigirToken(...escoposNecessarios) {
-    return async (req, res, next) => {
-        const cabecalho = req.get('authorization') ?? '';
-        const [esquema, valor] = cabecalho.split(' ');
+// O token é a própria APP_CRYPTO_KEY. Se um dia convier separar os dois
+// segredos, basta definir API_TOKEN no .env — o resto continua igual.
+function tokenEsperado() {
+    const valor = (process.env.API_TOKEN || config.chaveCripto || '').trim();
+    return valor === '' ? null : valor;
+}
 
-        if (!valor || String(esquema).toLowerCase() !== 'bearer') {
-            return res.status(401).json({
-                erro: 'Informe o token: Authorization: Bearer <token>.',
-            });
-        }
+// Tempo constante: comparar com === diria, pelo tempo de resposta, quantos
+// caracteres do começo estão certos.
+function confere(recebido, esperado) {
+    const a = Buffer.from(String(recebido));
+    const b = Buffer.from(esperado);
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 
-        // Mesmo freio do login. Token é adivinhável em teoria, e nada aqui
-        // impediria alguém de tentar milhões de vezes.
-        const espera = limite.bloqueadoPor(valor.slice(0, 20), req.ip);
-        if (espera > 0) {
-            return res.status(429).json({
-                erro: `Muitas tentativas. Tente de novo em ${Math.ceil(espera / 60)} minuto(s).`,
-            });
-        }
+function exigirToken(req, res, next) {
+    const esperado = tokenEsperado();
+    if (!esperado) {
+        console.error('Integração sem token configurado: APP_CRYPTO_KEY vazia.');
+        return res.status(500).json({ erro: 'Integração não configurada no servidor.' });
+    }
 
-        let dono;
-        try {
-            dono = await tokenApiService.validarToken(valor);
-        } catch (erro) {
-            console.error('Falha ao validar token de API:', erro.message);
-            return res.status(500).json({ erro: 'Não foi possível validar o token.' });
-        }
+    const cabecalho = req.get('authorization') ?? '';
+    const separador = cabecalho.indexOf(' ');
+    const esquema = separador < 0 ? '' : cabecalho.slice(0, separador);
+    // Fatiado, e não split: a chave é base64 e pode conter espaço nenhum,
+    // mas dividir por espaço quebraria qualquer token que tivesse.
+    const valor = separador < 0 ? '' : cabecalho.slice(separador + 1).trim();
 
-        if (!dono) {
-            limite.registrarFalha(valor.slice(0, 20), req.ip);
-            // Uma resposta só para token inexistente, revogado e segredo
-            // errado: distinguir diria a quem tenta o que acertou.
-            return res.status(401).json({ erro: 'Token inválido.' });
-        }
+    if (!valor || esquema.toLowerCase() !== 'bearer') {
+        return res.status(401).json({ erro: 'Informe o token: Authorization: Bearer <token>.' });
+    }
 
-        const faltando = escoposNecessarios.filter((e) => !dono.escopos.includes(e));
-        if (faltando.length > 0) {
-            return res.status(403).json({
-                erro: `Este token não tem permissão para: ${faltando.join(', ')}.`,
-            });
-        }
+    // Mesmo freio do login. Sem ele, nada impediria tentativa em série.
+    const espera = limite.bloqueadoPor('integracao', req.ip);
+    if (espera > 0) {
+        return res.status(429).json({
+            erro: `Muitas tentativas. Tente de novo em ${Math.ceil(espera / 60)} minuto(s).`,
+        });
+    }
 
-        limite.registrarSucesso(valor.slice(0, 20), req.ip);
-        req.tokenApi = dono;
-        next();
-    };
+    if (!confere(valor, esperado)) {
+        limite.registrarFalha('integracao', req.ip);
+        return res.status(401).json({ erro: 'Token inválido.' });
+    }
+
+    limite.registrarSucesso('integracao', req.ip);
+    next();
 }
 
 module.exports = { exigirToken };

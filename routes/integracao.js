@@ -5,6 +5,6 @@ const { buscarCliente } = require('../controllers/integracaoController');
 
 // Rotas para consumo por máquina. Autenticam por Bearer, não por sessão —
 // e o token vale só aqui: as rotas da tela continuam exigindo login.
-router.get('/cliente', exigirToken('clientes:ler'), buscarCliente);
+router.get('/cliente', exigirToken, buscarCliente);
 
 module.exports = router;
