@@ -36,6 +36,10 @@ function cortar(texto) {
 }
 
 function logIntegracao(req, res, next) {
+    // Vale mesmo com o log desligado: nada aqui pode ser servido de cache.
+    // Cadastro muda, e resposta velha no chatbot vira endereço errado.
+    res.set('Cache-Control', 'no-store');
+
     if (!ligado()) return next();
 
     const inicio = Date.now();

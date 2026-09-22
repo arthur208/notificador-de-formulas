@@ -19,6 +19,12 @@ const PORT = config.porta;
 // trust proxy fica ligado para o req.ip do log e do freio refletirem o
 // cliente quando houver proxy na frente.
 app.set('trust proxy', 1);
+
+// O Express põe ETag em toda resposta JSON por conta própria. Quem devolve o
+// ETag num If-None-Match recebe 304 SEM CORPO — e cliente que não trata isso
+// enxerga resposta vazia. Numa API de dados que muda a cada gravação, o ganho
+// de banda não paga o risco: cada consulta vale a resposta inteira.
+app.set('etag', false);
 app.use(require('./middleware/cabecalhosSeguranca').cabecalhosSeguranca);
 // `verify` guarda o corpo cru antes do parse: é ele que denuncia JSON
 // malformado ou duplamente codificado, que o objeto já parseado esconde.
