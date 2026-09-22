@@ -20,14 +20,18 @@ const PORT = config.porta;
 // cliente quando houver proxy na frente.
 app.set('trust proxy', 1);
 app.use(require('./middleware/cabecalhosSeguranca').cabecalhosSeguranca);
-app.use(express.json());
+// `verify` guarda o corpo cru antes do parse: é ele que denuncia JSON
+// malformado ou duplamente codificado, que o objeto já parseado esconde.
+app.use(express.json({
+    verify: (req, _res, buf) => { req.corpoBruto = buf.toString('utf8'); },
+}));
 app.use(require('./middleware/autenticacao').carregarUsuario);
 app.use('/auth', require('./routes/auth'));
 app.use(express.static('public')); // 4º: Serve os arquivos estáticos (index.html, app.js)
 
 // --- Rotas da API ---
 // Todas as rotas em /routes/api.js serão prefixadas com /api
-app.use('/api/integracao', require('./routes/integracao'));
+app.use('/api/integracao', require('./middleware/logIntegracao').logIntegracao, require('./routes/integracao'));
 app.use('/api/config', require('./routes/config'));
 app.use('/api', apiRoutes);
 
@@ -42,6 +46,10 @@ app.get(/^(?!\/api\/|\/auth\/).*/, (req, res, next) => {
     }
     next();
 });
+
+// Por último: pega o que estourou antes de chegar na rota, como JSON
+// malformado, e impede o Express de devolver HTML com stack trace.
+app.use(require('./middleware/erros').tratarErros);
 
 // --- Inicialização do Servidor ---
 async function startServer() {

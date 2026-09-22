@@ -297,16 +297,45 @@ funcionário devolvem `409`.
 | Código | Quando | O que fazer |
 |---|---|---|
 | `200` | Deu certo | — |
-| `400` | Falta parâmetro, ou telefone/CPF malformado | Corrigir a chamada |
+| `400` | Falta parâmetro, telefone/CPF malformado, JSON inválido, ou texto fora de UTF-8 | Corrigir a chamada |
 | `401` | Token ausente ou errado | Conferir o `Authorization` |
 | `404` | `codigoPessoa` não existe | Buscar de novo pelo `GET` |
 | `409` | O cadastro não é de cliente | Não alterar por aqui |
 | `422` | Validação falhou | Ler `erros[]` e corrigir — nada foi gravado |
 | `429` | Tentativas demais com token errado | Esperar 15 minutos |
+| `413` | Corpo grande demais | Reduzir o payload |
+| `415` | `Content-Type` não é `application/json` | Corrigir o cabeçalho |
 | `500` | Token não configurado no servidor | Avisar quem administra |
 | `502` | ERP indisponível | Repetir; nada foi gravado |
 
 ---
+
+## Como depurar
+
+O servidor registra cada chamada de `/api/integracao`, incluindo o corpo cru
+recebido — antes de qualquer tratamento nosso:
+
+```
+[integracao 21:43:24.257] PUT /api/integracao/cliente/4559
+[integracao 21:43:24.257]   auth: Bearer •••y+8= (44 chars)
+[integracao 21:43:24.257]   content-type: application/json · 107 bytes
+[integracao 21:43:24.257]   corpo cru: {"nome":"","cpf":"{{cpf}}","endereco":{"bairro":"Centro"}}
+[integracao 21:43:24.258]   apos limpeza: {"endereco":{"bairro":"Centro"}}
+[integracao 21:43:24.257] -> 200 em 148ms
+```
+
+`pm2 logs notificador | grep integracao`. O token nunca aparece inteiro.
+
+A comparação entre **corpo cru** e **após limpeza** é o que mais resolve: mostra
+o que a plataforma mandou de verdade e o que sobrou.
+
+Desligue com `LOG_INTEGRACAO=0` no `.env` — o log imprime dado de cliente.
+
+### Texto com acento
+
+Mande em **UTF-8**. Texto em latin1 é recusado com `400`, porque o ERP não
+consegue converter. O tamanho em bytes no log denuncia: `Jardim Ipê` em UTF-8
+ocupa 37 bytes no corpo do exemplo; em latin1, 36.
 
 ## Coisas que vão acontecer
 

@@ -3,6 +3,7 @@ const { variantesDeTelefone, soDigitos } = require('../utils/telefone');
 const { validarCadastro } = require('../utils/validacaoCadastro');
 const { resumir } = require('../utils/resumoCliente');
 const { limparPayload } = require('../utils/limparPayload');
+const { logPayloadLimpo } = require('../middleware/logIntegracao');
 
 // Consulta de cadastro para integração (chatbot, automações).
 //
@@ -65,6 +66,16 @@ async function atualizarCliente(req, res) {
     // A plataforma de agente manda o template inteiro, com os campos não
     // preenchidos como "", "null" ou "{{cpf}}". Sai tudo isso antes de
     // validar — senão um slot vazio derruba a atualização inteira.
+    // O express.json só lê corpo com content-type de JSON. Vindo outro, o
+    // body chega vazio e a resposta seria "nenhum campo para atualizar" —
+    // mentira, porque o campo veio. Melhor dizer qual é o problema.
+    const tipo = req.get('content-type') ?? '';
+    if (Number(req.get('content-length')) > 0 && !tipo.includes('json')) {
+        return res.status(415).json({
+            erro: `Envie com Content-Type: application/json. Veio "${tipo || '(nenhum)'}".`,
+        });
+    }
+
     const corpo = limparPayload(req.body);
 
     // Telefone sem número é slot do template que ninguém preencheu, não
@@ -75,12 +86,15 @@ async function atualizarCliente(req, res) {
         if (corpo.telefones.length === 0) delete corpo.telefones;
     }
 
+    logPayloadLimpo(corpo);
+
     if (Object.keys(corpo).length === 0) {
         return res.status(400).json({ erro: 'Nenhum campo para atualizar.' });
     }
 
     const erros = validarCadastro(corpo);
     if (erros.length > 0) {
+        logPayloadLimpo(erros, 'erros de validacao');
         return res.status(422).json({
             erro: 'O cadastro não passou na validação. Nada foi alterado.',
             erros,
@@ -98,6 +112,17 @@ async function atualizarCliente(req, res) {
         if (erro.situacao) {
             return res.status(erro.situacao).json({ erro: erro.message });
         }
+        // "Cannot transliterate character between character sets": o texto
+        // chegou numa codificação que o ERP não converte — quase sempre
+        // latin1 onde devia ser UTF-8. É entrada ruim, não ERP fora do ar,
+        // e responder 502 faria a integração repetir para sempre.
+        if (/transliterate/i.test(erro.message ?? '')) {
+            console.error('Texto em codificação inválida:', erro.message);
+            return res.status(400).json({
+                erro: 'O texto tem caractere que o ERP não aceita. Envie em UTF-8.',
+            });
+        }
+
         console.error('Erro ao atualizar cadastro:', erro.message);
         return res.status(502).json({
             erro: 'Não foi possível gravar no ERP. Nada foi alterado.',
