@@ -176,3 +176,183 @@ async function buscarPorCpf(cpf) {
 }
 
 module.exports = { buscarPorTelefone, buscarPorCpf, montarCadastro };
+
+// --------------------------------------------------------------------------
+// Gravação no ERP
+// --------------------------------------------------------------------------
+//
+// Escrever aqui não é como escrever no nosso Mongo: o SmartPharmacy é dono
+// destes dados e defende as regras dele por gatilho. São 76 nessas tabelas —
+// PESSOAS_BU sanitiza o nome e lança exceção se ele ficar vazio,
+// PESSOAENDERECOS_BIU troca logradouro e bairro vazios por "." e CEP inválido
+// por "00000000", e PESSOAS_LOG registra a alteração na auditoria do ERP.
+//
+// Por isso duas decisões:
+//
+// 1. Tudo numa transação. Uma falha no meio deixaria o cadastro pela metade,
+//    com telefone novo e endereço velho.
+// 2. O retorno relê do banco depois de gravar. Os gatilhos alteram o que foi
+//    enviado, e devolver o que mandamos seria mentir sobre o que ficou lá.
+
+const Firebird = require('node-firebird');
+const { fbPool } = require('../config/db');
+
+// O texto entra convertido, espelhando o CAST da leitura. Sem isto o acento
+// é gravado em UTF-8 numa coluna CHARACTER SET NONE, e o ERP passa a exibir
+// "AcentuaÃ§Ã£o" para quem atende no balcão.
+function entrada(tamanho) {
+    return `CAST(? AS VARCHAR(${tamanho}) CHARACTER SET WIN1252)`;
+}
+
+function emTransacao(trabalho) {
+    return new Promise((resolve, reject) => {
+        fbPool.get((erroPool, db) => {
+            if (erroPool) return reject(new Error('Erro ao conectar ao DB Firebird.'));
+
+            db.transaction(Firebird.ISOLATION_READ_COMMITTED, (erroTr, tr) => {
+                if (erroTr) { db.detach(); return reject(erroTr); }
+
+                const rodar = (sql, params) => new Promise((ok, falhou) => {
+                    tr.query(sql, params, (e, r) => (e ? falhou(e) : ok(r)));
+                });
+
+                trabalho(rodar)
+                    .then((valor) => tr.commit((e) => {
+                        db.detach();
+                        return e ? reject(e) : resolve(valor);
+                    }))
+                    .catch((erro) => tr.rollback(() => {
+                        db.detach();
+                        reject(erro);
+                    }));
+            });
+        });
+    });
+}
+
+const COLUNA_FONE = {
+    celular: 'FONECEL',
+    residencial: 'FONERES',
+    comercial: 'FONECOM',
+    recado: 'FONEREC',
+};
+
+async function atualizarCadastro(codigoPessoa, dados) {
+    const codigo = Number(codigoPessoa);
+    if (!Number.isInteger(codigo) || codigo <= 0) {
+        throw Object.assign(new Error('Código de pessoa inválido.'), { situacao: 400 });
+    }
+
+    await emTransacao(async (rodar) => {
+        // A pessoa precisa existir e ser cliente. Sem esta guarda, a
+        // integração editaria médico, fornecedor ou funcionário.
+        const pessoa = await rodar('SELECT TIPO FROM PESSOAS WHERE CODIGOPES = ?', [codigo]);
+        if (pessoa.length === 0) {
+            throw Object.assign(new Error('Cliente não encontrado.'), { situacao: 404 });
+        }
+        if (decodeFBString(pessoa[0].TIPO)?.trim() !== 'CL') {
+            throw Object.assign(
+                new Error('Este cadastro não é de cliente e não pode ser alterado por aqui.'),
+                { situacao: 409 }
+            );
+        }
+
+        if (dados.nome !== undefined) {
+            await rodar(`UPDATE PESSOAS SET NOME = ${entrada(40)} WHERE CODIGOPES = ?`,
+                [String(dados.nome).trim(), codigo]);
+        }
+
+        if (dados.cpf !== undefined || dados.nascimento !== undefined) {
+            const existe = await rodar('SELECT CODIGOPES FROM PESSOAFISICA WHERE CODIGOPES = ?', [codigo]);
+            if (existe.length === 0) {
+                await rodar('INSERT INTO PESSOAFISICA (CODIGOPES) VALUES (?)', [codigo]);
+            }
+            if (dados.cpf !== undefined) {
+                await rodar('UPDATE PESSOAFISICA SET CPF = ? WHERE CODIGOPES = ?',
+                    [dados.cpf === null ? null : soDigitos(dados.cpf), codigo]);
+            }
+            if (dados.nascimento !== undefined) {
+                await rodar('UPDATE PESSOAFISICA SET DATANASCIMENTO = ? WHERE CODIGOPES = ?',
+                    [dados.nascimento === null ? null : dados.nascimento, codigo]);
+            }
+        }
+
+        if (dados.email !== undefined) {
+            const valor = dados.email === null ? null : String(dados.email).trim();
+
+            // PESSOAINTERNET.ENDERECO é NOT NULL: apagar o e-mail significa
+            // remover a linha, não gravar nulo nela. Tentar o nulo devolve
+            // "Validation error for column" e derruba a transação inteira —
+            // levando junto o endereço que já tinha sido gravado.
+            if (valor === null || valor === '') {
+                await rodar('DELETE FROM PESSOAINTERNET WHERE CODIGOPES = ?', [codigo]);
+            } else {
+                const existe = await rodar('SELECT CODIGONET FROM PESSOAINTERNET WHERE CODIGOPES = ?', [codigo]);
+                if (existe.length === 0) {
+                    await rodar(
+                        `INSERT INTO PESSOAINTERNET (CODIGONET, CODIGOPES, ENDERECO)
+                         VALUES (GEN_ID(GEN_PESSOAINTERNET, 1), ?, ${entrada(50)})`,
+                        [codigo, valor]
+                    );
+                } else {
+                    await rodar(`UPDATE PESSOAINTERNET SET ENDERECO = ${entrada(50)} WHERE CODIGOPES = ?`,
+                        [valor, codigo]);
+                }
+            }
+        }
+
+        if (Array.isArray(dados.telefones) && dados.telefones.length > 0) {
+            const existe = await rodar('SELECT CODIGOFONE FROM PESSOASFONE WHERE CODIGOPES = ?', [codigo]);
+            if (existe.length === 0) {
+                await rodar(
+                    'INSERT INTO PESSOASFONE (CODIGOFONE, CODIGOPES) VALUES (GEN_ID(GEN_PESSOASFONE, 1), ?)',
+                    [codigo]
+                );
+            }
+            for (const { tipo, numero } of dados.telefones) {
+                await rodar(
+                    `UPDATE PESSOASFONE SET ${COLUNA_FONE[tipo]} = ? WHERE CODIGOPES = ?`,
+                    [numero === null ? null : soDigitos(numero), codigo]
+                );
+            }
+        }
+
+        if (dados.endereco) {
+            const e = dados.endereco;
+            const existe = await rodar('SELECT CODIGOPE FROM PESSOAENDERECOS WHERE CODIGOPES = ?', [codigo]);
+            if (existe.length === 0) {
+                await rodar(
+                    'INSERT INTO PESSOAENDERECOS (CODIGOPE, CODIGOPES) VALUES (GEN_ID(GEN_PESSOAENDERECOS, 1), ?)',
+                    [codigo]
+                );
+            }
+            const partes = [];
+            const valores = [];
+            const por = (campo, coluna, tamanho, transformar = (v) => String(v).trim()) => {
+                if (e[campo] === undefined) return;
+                partes.push(`${coluna} = ${tamanho ? entrada(tamanho) : '?'}`);
+                valores.push(e[campo] === null ? null : transformar(e[campo]));
+            };
+            por('logradouro', 'LOGRADOURO', 40);
+            por('numero', 'NUMERO', 5);
+            por('complemento', 'COMPLEMENTO', 40);
+            por('bairro', 'BAIRRO', 20);
+            por('cep', 'CEP', null, (v) => soDigitos(v));
+            por('codigoCidade', 'CODIGOCID', null, (v) => Number(v));
+
+            if (partes.length > 0) {
+                valores.push(codigo);
+                await rodar(
+                    `UPDATE PESSOAENDERECOS SET ${partes.join(', ')} WHERE CODIGOPES = ?`,
+                    valores
+                );
+            }
+        }
+    });
+
+    // Relê fora da transação: é o estado já com os gatilhos aplicados.
+    const [atualizado] = await montarCadastro([codigo]);
+    return atualizado;
+}
+
+module.exports.atualizarCadastro = atualizarCadastro;

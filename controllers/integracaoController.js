@@ -1,5 +1,6 @@
 const clienteService = require('../services/clienteService');
 const { variantesDeTelefone, soDigitos } = require('../utils/telefone');
+const { validarCadastro } = require('../utils/validacaoCadastro');
 
 // Consulta de cadastro para integração (chatbot, automações).
 //
@@ -46,4 +47,38 @@ async function buscarCliente(req, res) {
     }
 }
 
-module.exports = { buscarCliente };
+// Atualiza o cadastro no ERP. Valida TUDO antes de gravar QUALQUER coisa e
+// devolve a lista completa de problemas — quem integra corrige de uma vez,
+// em vez de descobrir um defeito por requisição.
+async function atualizarCliente(req, res) {
+    const codigo = Number(req.params.codigoPessoa);
+    if (!Number.isInteger(codigo) || codigo <= 0) {
+        return res.status(400).json({ erro: 'codigoPessoa inválido.' });
+    }
+
+    const erros = validarCadastro(req.body);
+    if (erros.length > 0) {
+        return res.status(422).json({
+            erro: 'O cadastro não passou na validação. Nada foi alterado.',
+            erros,
+        });
+    }
+
+    try {
+        const cliente = await clienteService.atualizarCadastro(codigo, req.body);
+        // Relido do banco: os gatilhos do ERP mudam o que foi enviado —
+        // sanitizam o nome, põem "." em bairro vazio, "00000000" em CEP.
+        return res.json({ atualizado: true, cliente });
+    } catch (erro) {
+        if (erro.situacao) {
+            return res.status(erro.situacao).json({ erro: erro.message });
+        }
+        console.error('Erro ao atualizar cadastro:', erro.message);
+        return res.status(502).json({
+            erro: 'Não foi possível gravar no ERP. Nada foi alterado.',
+            detalhe: erro.message,
+        });
+    }
+}
+
+module.exports = { buscarCliente, atualizarCliente };
