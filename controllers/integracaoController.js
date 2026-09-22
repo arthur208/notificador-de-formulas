@@ -1,6 +1,7 @@
 const clienteService = require('../services/clienteService');
 const { variantesDeTelefone, soDigitos } = require('../utils/telefone');
 const { validarCadastro } = require('../utils/validacaoCadastro');
+const { resumir } = require('../utils/resumoCliente');
 
 // Consulta de cadastro para integração (chatbot, automações).
 //
@@ -24,7 +25,11 @@ async function buscarCliente(req, res) {
                 return res.status(400).json({ erro: 'CPF precisa ter 11 dígitos.' });
             }
             const clientes = await clienteService.buscarPorCpf(digitos);
-            return res.json({ consultadoPor: 'cpf', encontrados: clientes.length, clientes });
+            return res.json({
+                consultadoPor: 'cpf',
+                encontrados: clientes.length,
+                clientes: clientes.map(resumir),
+            });
         }
 
         const variantes = variantesDeTelefone(telefone);
@@ -39,7 +44,7 @@ async function buscarCliente(req, res) {
             // Ajuda a depurar "por que não achou": mostra o que foi procurado.
             variantes,
             encontrados: clientes.length,
-            clientes,
+            clientes: clientes.map(resumir),
         });
     } catch (erro) {
         console.error('Erro na consulta de cliente:', erro.message);
@@ -66,9 +71,11 @@ async function atualizarCliente(req, res) {
 
     try {
         const cliente = await clienteService.atualizarCadastro(codigo, req.body);
-        // Relido do banco: os gatilhos do ERP mudam o que foi enviado —
-        // sanitizam o nome, põem "." em bairro vazio, "00000000" em CEP.
-        return res.json({ atualizado: true, cliente });
+        // Mesmo resumo da consulta: se o PUT devolvesse o cadastro inteiro,
+        // bastaria gravar qualquer coisa para ler o que o GET esconde.
+        // O `faltando` aqui já reflete a gravação — é ele que diz se ainda
+        // sobrou campo para pedir ao cliente.
+        return res.json({ atualizado: true, cliente: resumir(cliente) });
     } catch (erro) {
         if (erro.situacao) {
             return res.status(erro.situacao).json({ erro: erro.message });

@@ -61,39 +61,53 @@ O DDD é obrigatório: sem ele o mesmo número existe em vários estados.
 ```json
 {
   "consultadoPor": "telefone",
-  "variantes": ["44991135801", "4491135801"],
+  "variantes": ["44988239501", "4488239501"],
   "encontrados": 1,
   "clientes": [
     {
       "codigoPessoa": 4559,
       "nome": "Cristina Farias",
-      "cpf": "03721801911",
-      "nascimento": "1980-10-20",
-      "sexo": "F",
-      "ativo": true,
-      "cadastradoEm": "2006-04-28",
-      "email": null,
-      "telefones": [
-        { "tipo": "celular",     "numero": "44988239501" },
-        { "tipo": "residencial", "numero": "44991193243" }
-      ],
-      "enderecos": [
-        {
-          "logradouro": "Rua Curitiba",
-          "numero": "103",
-          "complemento": null,
-          "bairro": null,
-          "cep": null,
-          "cidade": "Santa Cruz do Monte Castelo",
-          "uf": "PR",
-          "codigoCidade": 203,
-          "entrega": true
-        }
-      ]
+      "primeiroNome": "Cristina",
+      "cpfMascarado": "***.218.019-**",
+      "cidade": "Santa Cruz do Monte Castelo/PR",
+      "completo": false,
+      "faltando": ["bairro", "cep", "email"]
     }
   ]
 }
 ```
+
+| Campo | Para quê |
+|---|---|
+| `codigoPessoa` | É o que vai na URL do `PUT` |
+| `nome` | Nome completo, para desempatar entre pessoas do mesmo número |
+| `primeiroNome` | Para tratar o cliente na conversa |
+| `cpfMascarado` | O cliente reconhece o próprio CPF pelo miolo; `null` se não tiver |
+| `cidade` | Cidade e UF do endereço de entrega |
+| `completo` | `true` quando não falta nada |
+| `faltando` | Os campos vazios, em ordem fixa |
+
+### A API não devolve o cadastro cru
+
+CPF inteiro, telefone, logradouro, número, e-mail e data de nascimento **não
+saem por aqui**. A integração recebe o suficiente para reconhecer a pessoa e
+saber o que pedir a ela — não uma cópia do cadastro para espalhar por toda
+ferramenta que encostar na API.
+
+Quem precisa do dado completo tem: ele está no ERP, na tela do balcão, com
+gente identificada por trás.
+
+### `faltando` é a lista do que perguntar
+
+Campos conferidos, nesta ordem: `nome`, `cpf`, `nascimento`, `telefone`,
+`logradouro`, `numero`, `bairro`, `cep`, `cidade`, `email`.
+
+A ordem é fixa entre chamadas — quem monta a conversa a partir dessa lista
+pode contar com ela.
+
+O caminho natural é: consultar, ver o que falta, pedir ao cliente, e mandar
+no `PUT`. O `faltando` da resposta do `PUT` já vem atualizado, então dá para
+saber se ainda sobrou campo sem perguntar de novo.
 
 `variantes` mostra o que foi de fato procurado. Quando não encontrar, é por
 aí que se descobre o motivo, em vez de adivinhar.
@@ -110,16 +124,24 @@ como lista, sempre.
 Quando vier mais de um, não escolha sozinho: pergunte ao cliente de quem é a
 fórmula, ou use o CPF, que é único.
 
-Exemplo real do cadastro — um único número devolve três pessoas:
+Exemplo real — mãe e filha, mesma casa, mesmo celular:
 
 ```json
-{ "encontrados": 3,
+{ "encontrados": 2,
   "clientes": [
-    { "codigoPessoa": 30507, "nome": "Cicera Francisca Dias de Souza", "...": "..." },
-    { "codigoPessoa": 37117, "nome": "Nathalia Lopes de Souza",        "...": "..." },
-    { "codigoPessoa": 46837, "nome": "Rita Pedra da Costa",            "...": "..." }
+    { "codigoPessoa": 6397,  "nome": "Antonia de Oliveira Gomes",
+      "primeiroNome": "Antonia", "cpfMascarado": null,
+      "cidade": "Querencia do Norte/PR", "completo": false,
+      "faltando": ["cpf", "bairro", "cep", "email"] },
+    { "codigoPessoa": 37706, "nome": "Wilma Aparecida Oliveira Gomes",
+      "primeiroNome": "Wilma", "cpfMascarado": null,
+      "cidade": "Querencia do Norte/PR", "completo": false,
+      "faltando": ["cpf", "bairro", "cep", "email"] }
   ] }
 ```
+
+É por isso que `nome` vem completo no resumo: é o que permite perguntar
+"é para Antonia ou para Wilma?" e usar o `codigoPessoa` certo no `PUT`.
 
 ---
 
@@ -180,13 +202,30 @@ acharia que gravou.
 ### Resposta de sucesso
 
 ```json
-{ "atualizado": true, "cliente": { ...mesmo formato do GET... } }
+{
+  "atualizado": true,
+  "cliente": {
+    "codigoPessoa": 4559,
+    "nome": "Cristina Farias",
+    "primeiroNome": "Cristina",
+    "cpfMascarado": "***.218.019-**",
+    "cidade": "Santa Cruz do Monte Castelo/PR",
+    "completo": false,
+    "faltando": ["email"]
+  }
+}
 ```
 
-**O `cliente` é relido do banco depois de gravar, e pode diferir do que você
-enviou.** O ERP tem 76 gatilhos nessas tabelas: eles sanitizam o nome, trocam
-logradouro e bairro vazios por `"."` e CEP inválido por `"00000000"`. Confira
-a resposta se o valor exato importar.
+Mesmo resumo da consulta, e pelo mesmo motivo: se o `PUT` devolvesse o
+cadastro inteiro, bastaria gravar qualquer coisa para ler o que o `GET`
+esconde.
+
+O `faltando` já reflete a gravação — no exemplo acima, bairro e CEP saíram da
+lista porque acabaram de ser preenchidos.
+
+**O que ficou gravado pode diferir do que você enviou.** O ERP tem 76 gatilhos
+nessas tabelas: sanitizam o nome, trocam logradouro e bairro vazios por `"."`
+e CEP inválido por `"00000000"`. Se o valor exato importar, consulte de novo.
 
 Acento é preservado. A gravação converte para a codificação do ERP, então
 `Jardim Ipê` aparece corretamente também no SmartPharmacy, no balcão.
