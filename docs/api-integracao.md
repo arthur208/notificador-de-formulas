@@ -70,6 +70,7 @@ O DDD é obrigatório: sem ele o mesmo número existe em vários estados.
       "primeiroNome": "Cristina",
       "cpfMascarado": "***.218.019-**",
       "cidade": "Santa Cruz do Monte Castelo/PR",
+      "atualizadoEm": "2026-09-22T19:24:08",
       "completo": false,
       "faltando": ["bairro", "cep", "email"]
     }
@@ -84,6 +85,7 @@ O DDD é obrigatório: sem ele o mesmo número existe em vários estados.
 | `primeiroNome` | Para tratar o cliente na conversa |
 | `cpfMascarado` | O cliente reconhece o próprio CPF pelo miolo; `null` se não tiver |
 | `cidade` | Cidade e UF do endereço de entrega |
+| `atualizadoEm` | Última alteração do cadastro no ERP; `null` se nunca mudou |
 | `completo` | `true` quando não falta nada |
 | `faltando` | Os campos vazios, em ordem fixa |
 
@@ -96,6 +98,19 @@ ferramenta que encostar na API.
 
 Quem precisa do dado completo tem: ele está no ERP, na tela do balcão, com
 gente identificada por trás.
+
+### `atualizadoEm` diz quando o cadastro mudou pela última vez
+
+Vem de `DATAALTERACAO` e `HORAALTERACAO` no ERP, que estão preenchidos em
+**100% dos clientes**. Qualquer alteração passa por lá — mexer no endereço
+dispara um gatilho que atualiza a pessoa. As gravações desta API também
+movem esse horário; foi medido.
+
+Serve para decidir se vale reconfirmar o dado com o cliente. Cadastro parado
+há cinco anos merece um "seu endereço ainda é esse?"; alterado semana passada,
+não.
+
+O fuso é o do servidor do ERP, sem indicação de zona. Não trate como UTC.
 
 ### `faltando` é a lista do que perguntar
 

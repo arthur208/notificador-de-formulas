@@ -36,6 +36,17 @@ function numeroOuNulo(valor) {
     return digitos && !/^0+$/.test(digitos) ? digitos : null;
 }
 
+// DATAALTERACAO guarda a data e HORAALTERACAO a hora, em colunas separadas.
+// Sozinha, a data diz pouco: várias alterações no mesmo dia ficam iguais.
+function juntarDataHora(data, hora) {
+    const dia = paraIso(data);
+    if (!dia) return null;
+    if (!hora) return dia;
+    const h = hora instanceof Date ? hora : new Date(hora);
+    if (Number.isNaN(h.getTime())) return dia;
+    return `${dia}T${h.toISOString().slice(11, 19)}`;
+}
+
 function paraIso(data) {
     if (!data) return null;
     const d = data instanceof Date ? data : new Date(data);
@@ -90,6 +101,7 @@ async function montarCadastro(codigos) {
     const [pessoas, fones, enderecos, emails] = await Promise.all([
         queryFb(
             `SELECT P.CODIGOPES, ${texto('P.NOME', 40)} AS NOME, P.DATACAD, P.STATUS,
+                    P.DATAALTERACAO, P.HORAALTERACAO,
                     ${limpo('X.CPF')} AS CPF, X.DATANASCIMENTO, X.SEXO
                FROM PESSOAS P
                LEFT JOIN PESSOAFISICA X ON X.CODIGOPES = P.CODIGOPES
@@ -150,6 +162,10 @@ async function montarCadastro(codigos) {
             sexo: limparValor(p.SEXO),
             ativo: limparValor(p.STATUS) !== 'I',
             cadastradoEm: paraIso(p.DATACAD),
+            // O ERP mantém em PESSOAS, e qualquer alteração passa por lá:
+            // mexer no endereço dispara PESSOAENDERECOS_AIU, que faz UPDATE
+            // em PESSOAS. Medido: a gravação desta API move o horário.
+            atualizadoEm: juntarDataHora(p.DATAALTERACAO, p.HORAALTERACAO),
             email: limparValor((mEmails.get(codigo) ?? [])[0]?.EMAIL),
             telefones,
             enderecos: (mEnderecos.get(codigo) ?? []).map((e) => ({

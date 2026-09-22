@@ -98,6 +98,7 @@ describe('resumo', () => {
             primeiroNome: 'Cristina',
             cpfMascarado: '***.218.019-**',
             cidade: 'Santa Cruz do Monte Castelo/PR',
+            atualizadoEm: null,
             completo: false,
             faltando: ['bairro', 'cep', 'email'],
         });
@@ -111,6 +112,15 @@ describe('resumo', () => {
         assert.ok(!texto.includes('Rua Curitiba'), 'vazou o logradouro');
         assert.ok(!texto.includes('cristina@exemplo.com'), 'vazou o e-mail');
         assert.ok(!texto.includes('1980-10-20'), 'vazou o nascimento');
+    });
+
+    test('leva a data da última alteração adiante', () => {
+        const r = resumir({ ...completo, atualizadoEm: '2026-09-22T19:24:08' });
+        assert.strictEqual(r.atualizadoEm, '2026-09-22T19:24:08');
+    });
+
+    test('sem data de alteração devolve null, não a data de hoje', () => {
+        assert.strictEqual(resumir(completo).atualizadoEm, null);
     });
 
     test('prefere o endereço de entrega quando há mais de um', () => {

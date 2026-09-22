@@ -70,6 +70,10 @@ function resumir(cliente) {
         primeiroNome: primeiroNome(cliente.nome),
         cpfMascarado: mascararCpf(cliente.cpf),
         cidade: e.cidade ? [e.cidade, e.uf].filter(Boolean).join('/') : null,
+        // Quando o cadastro mudou pela última vez, no fuso do ERP. Serve
+        // para a integração decidir se vale reconfirmar o dado com o
+        // cliente ou aceitar o que está lá.
+        atualizadoEm: cliente.atualizadoEm ?? null,
         completo: pendentes.length === 0,
         faltando: pendentes,
     };
