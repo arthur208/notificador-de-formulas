@@ -1,0 +1,817 @@
+{
+  "info": {
+    "name": "Notificador de Fórmulas — API de integração",
+    "description": "Consulta e atualização do cadastro de clientes do SmartPharmacy.\n\n**Antes de rodar**, preencha as variáveis da collection:\n\n- `baseUrl` — endereço do servidor\n- `token` — o valor de `API_TOKEN` do `.env` (ou `APP_CRYPTO_KEY`, se aquele estiver vazio)\n\nRode \"Por telefone (com o 9)\" primeiro: ele guarda o `codigoPessoa` que as requisições de atualização usam.\n\n**As requisições da pasta 2 gravam no ERP de produção.** Os valores de exemplo alteram cadastro de verdade.\n\nDocumentação: `docs/api-integracao.md` no repositório.\n\n**Rodando a pasta 3 várias vezes seguidas**, os dois casos de token inválido acumulam: cinco erros do mesmo IP disparam o freio e a resposta vira 429 em vez de 401. Espere 15 minutos ou reinicie o servidor — a contagem vive na memória do processo.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// O Firebird do ERP recusa conexão de vez em quando e devolve 502.",
+          "// Falha conhecida, que se recupera sozinha.",
+          "if (pm.response.code === 502) {",
+          "    console.warn('502 — instabilidade do Firebird. Repita a requisição.');",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3008",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "telefone",
+      "value": "44988239501",
+      "type": "string"
+    },
+    {
+      "key": "cpf",
+      "value": "03721801911",
+      "type": "string"
+    },
+    {
+      "key": "codigoPessoa",
+      "value": "4559",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Consulta",
+      "description": "Busca de cadastro por telefone ou CPF. A resposta é um resumo: CPF mascarado, sem telefone, endereço ou e-mail.",
+      "item": [
+        {
+          "name": "Por telefone (com o 9)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('respondeu 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const corpo = pm.response.json();",
+                  "",
+                  "pm.test('achou alguém', () => pm.expect(corpo.encontrados).to.be.above(0));",
+                  "",
+                  "pm.test('o CPF vem mascarado, nunca inteiro', () => {",
+                  "    corpo.clientes.forEach((c) => {",
+                  "        if (c.cpfMascarado) pm.expect(c.cpfMascarado).to.match(/^\\*\\*\\*\\.\\d{3}\\.\\d{3}-\\*\\*$/);",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.test('não vaza dado cru do cadastro', () => {",
+                  "    const texto = pm.response.text();",
+                  "    ['telefones', 'enderecos', 'logradouro', 'nascimento'].forEach((campo) => {",
+                  "        pm.expect(texto).to.not.include(campo);",
+                  "    });",
+                  "});",
+                  "",
+                  "if (corpo.encontrados === 1) {",
+                  "    pm.collectionVariables.set('codigoPessoa', corpo.clientes[0].codigoPessoa);",
+                  "    console.log('codigoPessoa guardado:', corpo.clientes[0].codigoPessoa);",
+                  "}"
+                ]
+              },
+              "name": "Por telefone (com o 9)"
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/integracao/cliente?telefone={{telefone}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "integracao",
+                "cliente"
+              ],
+              "query": [
+                {
+                  "key": "telefone",
+                  "value": "{{telefone}}"
+                }
+              ]
+            },
+            "description": "Guarda o codigoPessoa numa variável, para as requisições de atualização funcionarem sem você copiar nada."
+          }
+        },
+        {
+          "name": "Por telefone (sem o 9) — prova o fallback",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('respondeu 200', () => pm.response.to.have.status(200));",
+                  "const corpo = pm.response.json();",
+                  "pm.test('encontrou mesmo sem o 9', () => pm.expect(corpo.encontrados).to.be.above(0));",
+                  "pm.test('procurou pelas duas formas', () => {",
+                  "    pm.expect(corpo.variantes).to.have.lengthOf(2);",
+                  "});"
+                ]
+              },
+              "name": "Por telefone (sem o 9) — prova o fallback"
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/integracao/cliente?telefone=4488239501",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "integracao",
+                "cliente"
+              ],
+              "query": [
+                {
+                  "key": "telefone",
+                  "value": "4488239501"
+                }
+              ]
+            },
+            "description": "O cadastro está gravado com o 9. Procurar sem ele encontra do mesmo jeito — é o que resolve o número que chega do WhatsApp em formato diferente do que o balcão cadastrou."
+          }
+        },
+        {
+          "name": "Por telefone (com DDI 55)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('respondeu 200', () => pm.response.to.have.status(200));",
+                  "pm.test('achou', () => pm.expect(pm.response.json().encontrados).to.be.above(0));"
+                ]
+              },
+              "name": "Por telefone (com DDI 55)"
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/integracao/cliente?telefone=5544988239501",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "integracao",
+                "cliente"
+              ],
+              "query": [
+                {
+                  "key": "telefone",
+                  "value": "5544988239501"
+                }
+              ]
+            },
+            "description": "O formato que chega do WhatsApp. O 55 é descartado."
+          }
+        },
+        {
+          "name": "Por telefone (com pontuação)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('respondeu 200', () => pm.response.to.have.status(200));",
+                  "pm.test('achou', () => pm.expect(pm.response.json().encontrados).to.be.above(0));"
+                ]
+              },
+              "name": "Por telefone (com pontuação)"
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/integracao/cliente?telefone=(44) 98823-9501",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "integracao",
+                "cliente"
+              ],
+              "query": [
+                {
+                  "key": "telefone",
+                  "value": "(44) 98823-9501"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Por CPF",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('respondeu 200', () => pm.response.to.have.status(200));",
+                  "const corpo = pm.response.json();",
+                  "pm.test('consultou por cpf', () => pm.expect(corpo.consultadoPor).to.eql('cpf'));",
+                  "pm.test('no máximo uma pessoa por CPF', () => pm.expect(corpo.encontrados).to.be.below(2));"
+                ]
+              },
+              "name": "Por CPF"
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/integracao/cliente?cpf={{cpf}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "integracao",
+                "cliente"
+              ],
+              "query": [
+                {
+                  "key": "cpf",
+                  "value": "{{cpf}}"
+                }
+              ]
+            },
+            "description": "O CPF é único: é o jeito de desempatar quando o telefone pertence a mais de uma pessoa."
+          }
+        },
+        {
+          "name": "Telefone de duas pessoas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('respondeu 200', () => pm.response.to.have.status(200));",
+                  "const corpo = pm.response.json();",
+                  "pm.test('devolveu mais de uma pessoa', () => pm.expect(corpo.encontrados).to.be.above(1));",
+                  "pm.test('o nome completo permite desempatar', () => {",
+                  "    corpo.clientes.forEach((c) => pm.expect(c.nome).to.be.a('string').and.not.empty);",
+                  "});"
+                ]
+              },
+              "name": "Telefone de duas pessoas"
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/integracao/cliente?telefone=11992536970",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "integracao",
+                "cliente"
+              ],
+              "query": [
+                {
+                  "key": "telefone",
+                  "value": "11992536970"
+                }
+              ]
+            },
+            "description": "Mãe e filha, mesma casa, mesmo celular. São 3.036 cadastros nessa situação. O bot precisa perguntar de quem é a fórmula antes de usar o codigoPessoa."
+          }
+        },
+        {
+          "name": "Telefone não cadastrado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('respondeu 200, não erro', () => pm.response.to.have.status(200));",
+                  "pm.test('lista vazia', () => {",
+                  "    const corpo = pm.response.json();",
+                  "    pm.expect(corpo.encontrados).to.eql(0);",
+                  "    pm.expect(corpo.clientes).to.be.an('array').that.is.empty;",
+                  "});"
+                ]
+              },
+              "name": "Telefone não cadastrado"
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/integracao/cliente?telefone=11900000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "integracao",
+                "cliente"
+              ],
+              "query": [
+                {
+                  "key": "telefone",
+                  "value": "11900000000"
+                }
+              ]
+            },
+            "description": "15,8% de quem recebeu fórmula no último ano não tem telefone nenhum no cadastro. Não achar é resultado normal, não erro."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Atualização",
+      "description": "Grava no ERP. Valida tudo antes de gravar qualquer coisa; falhando um campo, nada é alterado.",
+      "item": [
+        {
+          "name": "Preencher endereço",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('respondeu 200', () => pm.response.to.have.status(200));",
+                  "const c = pm.response.json().cliente;",
+                  "pm.test('confirmou a gravação', () => pm.expect(pm.response.json().atualizado).to.be.true);",
+                  "pm.test('o acento sobreviveu ao ERP', () => {",
+                  "    pm.expect(c.cidade || '').to.not.include('Ã');",
+                  "});",
+                  "pm.test('faltando já reflete a gravação', () => {",
+                  "    pm.expect(c.faltando).to.not.include('bairro');",
+                  "    pm.expect(c.faltando).to.not.include('cep');",
+                  "});",
+                  "pm.test('o PUT também não devolve dado cru', () => {",
+                  "    pm.expect(pm.response.text()).to.not.include('logradouro');",
+                  "});"
+                ]
+              },
+              "name": "Preencher endereço"
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/integracao/cliente/{{codigoPessoa}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "integracao",
+                "cliente",
+                "{{codigoPessoa}}"
+              ]
+            },
+            "description": "Rode antes \"Por telefone (com o 9)\", que guarda o codigoPessoa.\n\nA resposta é relida do banco: os gatilhos do ERP alteram o que foi enviado, então o que volta pode diferir do que você mandou.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"endereco\": {\n    \"logradouro\": \"Avenida São João\",\n    \"numero\": \"456\",\n    \"bairro\": \"Centro\",\n    \"cep\": \"87900123\"\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Atualizar telefone",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('respondeu 200', () => pm.response.to.have.status(200));"
+                ]
+              },
+              "name": "Atualizar telefone"
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/integracao/cliente/{{codigoPessoa}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "integracao",
+                "cliente",
+                "{{codigoPessoa}}"
+              ]
+            },
+            "description": "Tipos: celular, residencial, comercial, recado. Um de cada por requisição. \"numero\": null apaga aquele telefone.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telefones\": [\n    {\n      \"tipo\": \"celular\",\n      \"numero\": \"44988239501\"\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Preencher e-mail",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('respondeu 200', () => pm.response.to.have.status(200));",
+                  "pm.test('email saiu da lista de pendências', () => {",
+                  "    pm.expect(pm.response.json().cliente.faltando).to.not.include('email');",
+                  "});"
+                ]
+              },
+              "name": "Preencher e-mail"
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/integracao/cliente/{{codigoPessoa}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "integracao",
+                "cliente",
+                "{{codigoPessoa}}"
+              ]
+            },
+            "description": "Enviar \"email\": null remove o e-mail do cadastro.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"cliente@exemplo.com\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Erros esperados",
+      "description": "O que a integração precisa saber tratar.",
+      "item": [
+        {
+          "name": "Sem token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('recusou sem token', () => pm.response.to.have.status(401));"
+                ]
+              },
+              "name": "sem token"
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/integracao/cliente?telefone={{telefone}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "integracao",
+                "cliente"
+              ],
+              "query": [
+                {
+                  "key": "telefone",
+                  "value": "{{telefone}}"
+                }
+              ]
+            },
+            "description": "Sem Authorization, nenhuma rota responde."
+          }
+        },
+        {
+          "name": "Token errado (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('recusou token inválido', () => pm.response.to.have.status(401));",
+                  "pm.test('não diz o que errou', () => {",
+                  "    pm.expect(pm.response.json().erro).to.eql('Token inválido.');",
+                  "});"
+                ]
+              },
+              "name": "token errado"
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "chave-errada",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/integracao/cliente?telefone={{telefone}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "integracao",
+                "cliente"
+              ],
+              "query": [
+                {
+                  "key": "telefone",
+                  "value": "{{telefone}}"
+                }
+              ]
+            },
+            "description": "Cinco erros seguidos do mesmo IP bloqueiam por 15 minutos (429)."
+          }
+        },
+        {
+          "name": "Telefone sem DDD (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('recusou', () => pm.response.to.have.status(400));"
+                ]
+              },
+              "name": "Telefone sem DDD (400)"
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/integracao/cliente?telefone=991135801",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "integracao",
+                "cliente"
+              ],
+              "query": [
+                {
+                  "key": "telefone",
+                  "value": "991135801"
+                }
+              ]
+            },
+            "description": "Sem DDD o mesmo número existe em vários estados."
+          }
+        },
+        {
+          "name": "Telefone e CPF juntos (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('recusou', () => pm.response.to.have.status(400));"
+                ]
+              },
+              "name": "Telefone e CPF juntos (400)"
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/integracao/cliente?telefone={{telefone}}&cpf={{cpf}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "integracao",
+                "cliente"
+              ],
+              "query": [
+                {
+                  "key": "telefone",
+                  "value": "{{telefone}}"
+                },
+                {
+                  "key": "cpf",
+                  "value": "{{cpf}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Validação falhando (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('recusou com 422', () => pm.response.to.have.status(422));",
+                  "const corpo = pm.response.json();",
+                  "pm.test('devolveu vários erros, não só o primeiro', () => {",
+                  "    pm.expect(corpo.erros.length).to.be.above(5);",
+                  "});",
+                  "pm.test('cada erro diz o campo', () => {",
+                  "    corpo.erros.forEach((e) => {",
+                  "        pm.expect(e).to.have.property('campo');",
+                  "        pm.expect(e).to.have.property('erro');",
+                  "    });",
+                  "});",
+                  "pm.test('avisa que nada foi alterado', () => {",
+                  "    pm.expect(corpo.erro).to.include('Nada foi alterado');",
+                  "});"
+                ]
+              },
+              "name": "Validação falhando (422)"
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/integracao/cliente/{{codigoPessoa}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "integracao",
+                "cliente",
+                "{{codigoPessoa}}"
+              ]
+            },
+            "description": "Todos os erros voltam de uma vez, e NADA é gravado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"\",\n  \"cpf\": \"11111111111\",\n  \"nascimento\": \"2026-02-31\",\n  \"email\": \"sem-arroba\",\n  \"telefones\": [\n    {\n      \"tipo\": \"fax\",\n      \"numero\": \"123\"\n    }\n  ],\n  \"endereco\": {\n    \"cep\": \"123\",\n    \"logradouro\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Pessoa inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('não encontrou', () => pm.response.to.have.status(404));"
+                ]
+              },
+              "name": "Pessoa inexistente (404)"
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/integracao/cliente/99999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "integracao",
+                "cliente",
+                "99999999"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Teste\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Cadastro que não é cliente (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('recusou', () => pm.response.to.have.status(409));"
+                ]
+              },
+              "name": "Cadastro que não é cliente (409)"
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/integracao/cliente/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "integracao",
+                "cliente",
+                "1"
+              ]
+            },
+            "description": "Médico, fornecedor e funcionário não podem ser alterados por aqui.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Teste\"\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
