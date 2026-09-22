@@ -7,6 +7,55 @@ const { formatarHora } = require('../utils/datas');
 const CODIGO_STATUS_CONFERIDO = 12;
 const TAMANHO_LOTE_IN = 1000;
 
+// O Firebird do ERP recusa conexão de vez em quando, com "Your user name and
+// password are not defined" — credencial certa, recusa intermitente, sem causa
+// identificada. Medido em produção e em desenvolvimento durante meses.
+//
+// Repetir só a OBTENÇÃO da conexão é seguro por construção: falhando aí, nada
+// foi executado no banco. Consulta e gravação não são repetidas depois de
+// começarem — uma gravação repetida gravaria duas vezes.
+const TENTATIVAS_CONEXAO = 6;
+const ESPERA_INICIAL_MS = 120;
+
+function esperar(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Devolve uma conexão do pool, insistindo enquanto a recusa for de conexão.
+// Erro de SQL não passa por aqui: aquele é determinístico e repetir não ajuda.
+async function obterConexao(tentativas = TENTATIVAS_CONEXAO) {
+    let ultimo;
+
+    for (let i = 0; i < tentativas; i++) {
+        try {
+            const db = await new Promise((resolve, reject) => {
+                fbPool.get((err, db) => (err ? reject(err) : resolve(db)));
+            });
+            // Registrado para a recusa não virar invisível: absorvida em
+            // silêncio, ninguém saberia que o ERP está instável, nem quanto.
+            if (i > 0) {
+                console.warn(`Firebird recusou ${i}x e aceitou na tentativa ${i + 1}.`);
+            }
+            return db;
+        } catch (erro) {
+            ultimo = erro;
+            if (i < tentativas - 1) {
+                // Espera crescente: 120, 240, 480... A recusa costuma passar
+                // na primeira ou segunda repetição.
+                await esperar(ESPERA_INICIAL_MS * 2 ** i);
+            }
+        }
+    }
+
+    console.error(
+        `Firebird recusou conexão em ${tentativas} tentativas:`,
+        ultimo?.message ?? ultimo
+    );
+    const erro = new Error('Erro ao conectar ao DB Firebird.');
+    erro.causa = ultimo;
+    throw erro;
+}
+
 // Wrapper de query (Promise) específico para o Firebird.
 // A guarda `encerrado` existe para liberar a conexão que chega DEPOIS do
 // timeout — sem ela, cada consulta estourada vazaria uma conexão do pool.
@@ -19,15 +68,10 @@ function queryFb(sql, params, timeoutMs = config.firebird.timeoutMs) {
             reject(new Error(`Firebird não respondeu em ${timeoutMs}ms.`));
         }, timeoutMs);
 
-        fbPool.get((err, db) => {
+        obterConexao().then((db) => {
             if (encerrado) {
                 if (db) db.detach();
                 return;
-            }
-            if (err) {
-                clearTimeout(relogio);
-                console.error('Erro ao pegar conexão do pool Firebird:', err);
-                return reject(new Error('Erro ao conectar ao DB Firebird.'));
             }
             db.query(sql, params, (err, result) => {
                 db.detach();
@@ -39,6 +83,10 @@ function queryFb(sql, params, timeoutMs = config.firebird.timeoutMs) {
                 }
                 resolve(result);
             });
+        }).catch((erro) => {
+            if (encerrado) return;
+            clearTimeout(relogio);
+            reject(erro);
         });
     });
 }
@@ -303,6 +351,9 @@ module.exports = {
     // Exposto para services/clienteService.js: o wrapper carrega a guarda de
     // timeout que impede conexão vazada, e reimplementar isso seria pior.
     queryFb,
+    // A transação do clienteService precisa da conexão crua, mas com a mesma
+    // insistência — senão gravar continuaria falhando por recusa passageira.
+    obterConexao,
     getRecipeData,
     getDeliveryData,
     getReceitasConferidas,

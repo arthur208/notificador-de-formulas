@@ -1,4 +1,4 @@
-const { queryFb } = require('./firebirdService');
+const { queryFb, obterConexao } = require('./firebirdService');
 const { decodeFBString, toTitleCase } = require('../utils/helpers');
 const { variantesDeTelefone, soDigitos } = require('../utils/telefone');
 const { listaInteirosSegura } = require('../utils/lotes');
@@ -211,7 +211,7 @@ module.exports = { buscarPorTelefone, buscarPorCpf, montarCadastro };
 //    enviado, e devolver o que mandamos seria mentir sobre o que ficou lá.
 
 const Firebird = require('node-firebird');
-const { fbPool } = require('../config/db');
+// fbPool não é mais usado aqui: a conexão vem de obterConexao, que insiste.
 
 // O texto entra convertido, espelhando o CAST da leitura. Sem isto o acento
 // é gravado em UTF-8 numa coluna CHARACTER SET NONE, e o ERP passa a exibir
@@ -222,9 +222,9 @@ function entrada(tamanho) {
 
 function emTransacao(trabalho) {
     return new Promise((resolve, reject) => {
-        fbPool.get((erroPool, db) => {
-            if (erroPool) return reject(new Error('Erro ao conectar ao DB Firebird.'));
-
+        // Mesma insistência da leitura. Repetir aqui é seguro porque a recusa
+        // acontece ANTES de a transação abrir: nada foi gravado ainda.
+        obterConexao().then((db) => {
             db.transaction(Firebird.ISOLATION_READ_COMMITTED, (erroTr, tr) => {
                 if (erroTr) { db.detach(); return reject(erroTr); }
 
@@ -242,7 +242,7 @@ function emTransacao(trabalho) {
                         reject(erro);
                     }));
             });
-        });
+        }).catch(reject);
     });
 }
 

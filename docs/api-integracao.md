@@ -172,6 +172,43 @@ curl -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json
 
 Envie **só os campos que quer mudar**. O que não vier fica como está.
 
+### Campo vazio é ignorado, não é erro
+
+Plataforma de agente costuma mandar o template inteiro, com os campos não
+preenchidos como `""`, `null`, `"null"` ou até com a variável não substituída
+(`"{{cpf}}"`). Tudo isso é descartado antes da validação — um slot em branco
+não derruba mais a atualização.
+
+```json
+{ "nome": "", "cpf": "{{cpf}}", "email": "null",
+  "endereco": { "logradouro": "", "bairro": "Centro", "cep": "undefined" } }
+```
+
+Vira, na prática:
+
+```json
+{ "endereco": { "bairro": "Centro" } }
+```
+
+Objeto que fica sem nenhuma chave sai junto. Se **nada** sobrar, a resposta é
+`400` com `{ "erro": "Nenhum campo para atualizar." }` e o ERP não é chamado.
+
+O que sobra vem trimado: `"  Maria  "` grava `Maria`.
+
+### Para APAGAR um campo, use `"__NULL__"`
+
+Como `null` passou a significar "não preenchi", apagar exige um marcador
+explícito:
+
+```json
+{ "email": "__NULL__",
+  "endereco": { "complemento": "__NULL__" },
+  "telefones": [{ "tipo": "recado", "numero": "__NULL__" }] }
+```
+
+Um telefone com `"numero": ""` é slot não preenchido e é descartado — não vira
+pedido de apagar. Só `"__NULL__"` apaga.
+
 ### Campos aceitos
 
 | Campo | Tipo | Limite | Observação |

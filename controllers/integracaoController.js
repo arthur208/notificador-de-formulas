@@ -2,6 +2,7 @@ const clienteService = require('../services/clienteService');
 const { variantesDeTelefone, soDigitos } = require('../utils/telefone');
 const { validarCadastro } = require('../utils/validacaoCadastro');
 const { resumir } = require('../utils/resumoCliente');
+const { limparPayload } = require('../utils/limparPayload');
 
 // Consulta de cadastro para integração (chatbot, automações).
 //
@@ -61,7 +62,24 @@ async function atualizarCliente(req, res) {
         return res.status(400).json({ erro: 'codigoPessoa inválido.' });
     }
 
-    const erros = validarCadastro(req.body);
+    // A plataforma de agente manda o template inteiro, com os campos não
+    // preenchidos como "", "null" ou "{{cpf}}". Sai tudo isso antes de
+    // validar — senão um slot vazio derruba a atualização inteira.
+    const corpo = limparPayload(req.body);
+
+    // Telefone sem número é slot do template que ninguém preencheu, não
+    // pedido de alteração. `numero: null` (vindo de "__NULL__") permanece:
+    // aquele é pedido de apagar.
+    if (Array.isArray(corpo.telefones)) {
+        corpo.telefones = corpo.telefones.filter((t) => t && t.numero !== undefined);
+        if (corpo.telefones.length === 0) delete corpo.telefones;
+    }
+
+    if (Object.keys(corpo).length === 0) {
+        return res.status(400).json({ erro: 'Nenhum campo para atualizar.' });
+    }
+
+    const erros = validarCadastro(corpo);
     if (erros.length > 0) {
         return res.status(422).json({
             erro: 'O cadastro não passou na validação. Nada foi alterado.',
@@ -70,7 +88,7 @@ async function atualizarCliente(req, res) {
     }
 
     try {
-        const cliente = await clienteService.atualizarCadastro(codigo, req.body);
+        const cliente = await clienteService.atualizarCadastro(codigo, corpo);
         // Mesmo resumo da consulta: se o PUT devolvesse o cadastro inteiro,
         // bastaria gravar qualquer coisa para ler o que o GET esconde.
         // O `faltando` aqui já reflete a gravação — é ele que diz se ainda
