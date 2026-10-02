@@ -88,6 +88,37 @@ O DDD é obrigatório: sem ele o mesmo número existe em vários estados.
 | `atualizadoEm` | Última alteração do cadastro no ERP; `null` se nunca mudou |
 | `completo` | `true` quando não falta nada |
 | `faltando` | Os campos vazios, em ordem fixa |
+| `faltandoTexto` | Os mesmos campos em texto pronto para o WhatsApp, uma linha cada |
+
+### Campos no primeiro nível, para o agente não interpretar regra
+
+| Campo | Valor |
+|---|---|
+| `situacao` | `SEM_CADASTRO`, `MULTIPLOS`, `COMPLETO` ou `INCOMPLETO` |
+| `primeiroNome` | Do único cadastro; `""` quando não houver exatamente um |
+| `codigoPessoa` | Do único cadastro; `null` quando não houver exatamente um |
+| `faltandoTexto` | Do único cadastro; `""` quando não houver exatamente um |
+| `nomesCadastros` | Só em `MULTIPLOS`: `"Maria, João ou José"` |
+
+`situacao` segue o `faltandoTexto`, **não** o campo `completo`. São diferentes
+de propósito: cadastro sem telefone tem `completo: false`, mas não há o que
+pedir ao cliente — quem chegou pelo WhatsApp já mandou o número. Fosse pelo
+`completo`, o agente receberia `INCOMPLETO` com uma lista vazia.
+
+O telefone continua em `faltando` e em `completo`, porque para o balcão a
+falta importa.
+
+```json
+{
+  "encontrados": 3,
+  "situacao": "MULTIPLOS",
+  "primeiroNome": "",
+  "codigoPessoa": null,
+  "faltandoTexto": "",
+  "nomesCadastros": "Cicera, Nathalia ou Rita",
+  "clientes": [ "..." ]
+}
+```
 
 ### A API não devolve o cadastro cru
 
@@ -116,6 +147,15 @@ O fuso é o do servidor do ERP, sem indicação de zona. Não trate como UTC.
 
 Campos conferidos, nesta ordem: `nome`, `cpf`, `nascimento`, `telefone`,
 `logradouro`, `numero`, `bairro`, `cep`, `cidade`, `email`.
+
+Conta como **vazio** o que o ERP grava como fachada, não só o nulo: `"."` ou
+qualquer sequência de pontos, qualquer sequência de zeros, e `1899-12-30` no
+nascimento — a data zero do Delphi, que chega como data válida. CEP só vale
+com 8 dígitos e CPF com 11, o que descarta `"00000000"` e cadastro antigo com
+CEP de 4 dígitos.
+
+No `faltandoTexto`, os cinco campos de endereço viram **uma linha só**: pedir
+rua, número, bairro, CEP e cidade em cinco linhas seria conversa ruim.
 
 A ordem é fixa entre chamadas — quem monta a conversa a partir dessa lista
 pode contar com ela.

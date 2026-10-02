@@ -1,7 +1,7 @@
 const clienteService = require('../services/clienteService');
 const { variantesDeTelefone, soDigitos } = require('../utils/telefone');
 const { validarCadastro } = require('../utils/validacaoCadastro');
-const { resumir } = require('../utils/resumoCliente');
+const { resumir, resumirConsulta } = require('../utils/resumoCliente');
 const { limparPayload } = require('../utils/limparPayload');
 const { logPayloadLimpo } = require('../middleware/logIntegracao');
 
@@ -26,11 +26,14 @@ async function buscarCliente(req, res) {
             if (digitos.length !== 11) {
                 return res.status(400).json({ erro: 'CPF precisa ter 11 dígitos.' });
             }
-            const clientes = await clienteService.buscarPorCpf(digitos);
+            const resumos = (await clienteService.buscarPorCpf(digitos)).map(resumir);
             return res.json({
                 consultadoPor: 'cpf',
-                encontrados: clientes.length,
-                clientes: clientes.map(resumir),
+                encontrados: resumos.length,
+                // Mesma função da busca por telefone: o agente recebe o
+                // primeiro nível idêntico, venha de onde vier.
+                ...resumirConsulta(resumos),
+                clientes: resumos,
             });
         }
 
@@ -40,13 +43,14 @@ async function buscarCliente(req, res) {
                 erro: 'Telefone inválido. Informe com DDD, por exemplo 44991135801.',
             });
         }
-        const clientes = await clienteService.buscarPorTelefone(telefone);
+        const resumos = (await clienteService.buscarPorTelefone(telefone)).map(resumir);
         return res.json({
             consultadoPor: 'telefone',
             // Ajuda a depurar "por que não achou": mostra o que foi procurado.
             variantes,
-            encontrados: clientes.length,
-            clientes: clientes.map(resumir),
+            encontrados: resumos.length,
+            ...resumirConsulta(resumos),
+            clientes: resumos,
         });
     } catch (erro) {
         console.error('Erro na consulta de cliente:', erro.message);

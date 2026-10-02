@@ -101,6 +101,9 @@ describe('resumo', () => {
             atualizadoEm: null,
             completo: false,
             faltando: ['bairro', 'cep', 'email'],
+            // Acrescentado depois: texto pronto para o WhatsApp. Os campos
+            // de endereço viram uma linha só.
+            faltandoTexto: ['🏠 Endereço com número, bairro, CEP e cidade', '📧 E-mail'].join('\n'),
         });
     });
 
