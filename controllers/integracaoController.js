@@ -7,6 +7,7 @@ const { logPayloadLimpo } = require('../middleware/logIntegracao');
 const { classificarErroErp } = require('../utils/erroErp');
 const { consultarCep, NAO_ENCONTRADO } = require('../services/cepService');
 const { resolverCodigoCidade } = require('../services/cidadeErpService');
+const { deduzirSexo } = require('../services/sexoService');
 
 // Consulta de cadastro para integração (chatbot, automações).
 //
@@ -131,6 +132,51 @@ async function preencherCidade(corpo) {
     return null;
 }
 
+// Preenche o sexo quando a ficha de pessoa física precisa ser criada e quem
+// integra não mandou o campo.
+//
+// O ERP exige SEXO para criar a ficha, e 14.464 clientes (29%) não têm.
+// Deduzir pelo primeiro nome com o censo do IBGE evita interromper a conversa
+// para perguntar — e é tão preciso quanto o cadastro feito à mão: 3,40% do
+// campo SEXO do ERP está errado, medido com nomes inequívocos, o que explica
+// quase toda a divergência de 3,9% entre a dedução e o cadastro.
+//
+// Três coisas que esta função NÃO faz, de propósito:
+//
+//   1. Não toca em ficha que já existe. Sobrescrever o sexo informado no
+//      balcão por uma dedução seria trocar dado por palpite.
+//   2. Não passa na frente de quem integra: mandando `sexo`, nem consulta.
+//   3. Não chuta. Nome desconhecido ou dividido devolve 422 pedindo o campo.
+//
+// Devolve null quando está resolvido, ou { situacao, campo, erro }.
+async function preencherSexo(codigo, corpo) {
+    const precisaDaFicha = corpo.cpf !== undefined || corpo.nascimento !== undefined;
+    if (!precisaDaFicha) return null;
+    if (corpo.sexo !== undefined && corpo.sexo !== null) return null;
+
+    const ficha = await clienteService.fichaFisica(codigo);
+    if (!ficha) return null;        // cliente não existe; o 404 vem depois
+    if (ficha.existe) return null;  // ficha já existe: SEXO não é tocado
+
+    const deduzido = await deduzirSexo(ficha.nome);
+    if (!deduzido) {
+        return {
+            situacao: 422,
+            campo: 'sexo',
+            erro: 'Este cadastro ainda não tem ficha de pessoa física no ERP, e criá-la '
+                + 'exige o sexo (F ou M). O nome não foi suficiente para deduzir — '
+                + 'pergunte ao cliente e mande o campo "sexo" junto.',
+        };
+    }
+
+    corpo.sexo = deduzido.sexo;
+    logPayloadLimpo(
+        { nome: deduzido.nome, sexo: deduzido.sexo, confianca: Number(deduzido.confianca.toFixed(4)) },
+        'sexo deduzido pelo nome'
+    );
+    return null;
+}
+
 // Atualiza o cadastro no ERP. Valida TUDO antes de gravar QUALQUER coisa e
 // devolve a lista completa de problemas — quem integra corrige de uma vez,
 // em vez de descobrir um defeito por requisição.
@@ -185,11 +231,16 @@ async function atualizarCliente(req, res) {
         // Dentro do try porque resolver a cidade consulta o Firebird, e a
         // queda dele aqui precisa virar 502 pelo mesmo classificador — fora
         // do try viraria 500 genérico no middleware de erros.
-        const problemaCidade = await preencherCidade(corpo);
-        if (problemaCidade) {
-            const { situacao, campo, erro } = problemaCidade;
-            if (situacao === 422) return recusar(res, campo, erro);
-            return res.status(situacao).json({ erro });
+        for (const resolver of [
+            () => preencherCidade(corpo),
+            () => preencherSexo(codigo, corpo),
+        ]) {
+            const problema = await resolver();
+            if (problema) {
+                const { situacao, campo, erro } = problema;
+                if (situacao === 422) return recusar(res, campo, erro);
+                return res.status(situacao).json({ erro });
+            }
         }
 
         const cliente = await clienteService.atualizarCadastro(codigo, corpo);

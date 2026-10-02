@@ -256,7 +256,7 @@ pedido de apagar. Só `"__NULL__"` apaga.
 | `nome` | texto | 40 | O ERP sanitiza e recusa se ficar vazio |
 | `cpf` | texto | 11 dígitos | Dígitos verificadores são conferidos |
 | `nascimento` | texto | `AAAA-MM-DD` | Não pode ser futuro nem anterior a 1900 |
-| `sexo` | texto | `F` ou `M` | Aceita "feminino"/"masculino". **Obrigatório** em um caso — ver abaixo |
+| `sexo` | texto | `F` ou `M` | Aceita "feminino"/"masculino". Opcional: deduzido pelo nome — ver abaixo |
 | `email` | texto | 50 | `null` remove o e-mail |
 | `telefones` | lista | — | `[{ "tipo": "celular", "numero": "44991135801" }]` |
 | `endereco.logradouro` | texto | 40 | |
@@ -266,7 +266,7 @@ pedido de apagar. Só `"__NULL__"` apaga.
 | `endereco.cep` | texto | 8 dígitos | Pontuação é aceita e removida |
 | `endereco.codigoCidade` | inteiro | — | Opcional: mandando o `cep`, o servidor resolve |
 
-### Gravar CPF ou nascimento pode exigir `sexo`
+### O `sexo` é deduzido pelo nome, e raramente precisa ser mandado
 
 O CPF e a data de nascimento ficam numa tabela separada do ERP
 (`PESSOAFISICA`), e **14.464 clientes — 29% da base — não têm linha nela.**
@@ -274,21 +274,47 @@ Para esses, gravar CPF significa criar a linha, e o ERP exige o sexo: o
 domínio é `CHECK (VALUE IN ('F','M'))` e `NOT NULL`, sem valor para "não
 informado".
 
-Não há palpite aceitável. Chutar `F` acertaria 63% das vezes e gravaria o sexo
-errado de milhares de pessoas no cadastro que o balcão lê. Então a API recusa
-e devolve `422` pedindo o campo:
+O servidor resolve sozinho, pelo primeiro nome, com a API de nomes do censo do
+IBGE. Não precisa mandar nada.
+
+**Dá para confiar?** Medido contra os 36.740 cadastros que já têm o sexo
+preenchido, em amostra de 707 espalhada pela base: o nome não está no censo em
+2,0% dos casos e, quando está, a dedução concorda com o cadastro em 96,1%.
+
+Os 3,9% de divergência parecem erro da dedução, mas não são. Subir o limite de
+confiança **não** melhora a precisão — ela fica em ~96,5% mesmo acima de 99% —
+o que mostra que os erros não são casos duvidosos, e sim nomes inequívocos
+discordando. Conferido direto no banco, com nomes sem ambiguidade real:
+
+```
+4.519 cadastros de nome feminino,  152 gravados como M   3,36%
+3.064 cadastros de nome masculino, 106 gravados como F   3,46%
+                                   258 de 7.583 = 3,40%
+```
+
+**3,40% do campo `SEXO` do ERP está errado**, com erro simétrico — clique
+errado no balcão, não valor padrão enviesado. Isso explica quase toda a
+divergência. A dedução é tão precisa quanto o cadastro feito à mão.
+
+Três limites, de propósito:
+
+- **Ficha que já existe não é tocada.** Sobrescrever o sexo informado no balcão
+  por uma dedução seria trocar dado por palpite. Para os outros 71%, nada muda.
+- **Mandando `sexo`, a dedução nem acontece.** O que o cliente responde vence.
+- **Não chuta.** Nome dividido de verdade (`DARCI`: 66,9% masculino) ou fora do
+  censo devolve `422` pedindo o campo:
 
 ```json
 {
   "erro": "O cadastro não passou na validação do ERP. Nada foi alterado.",
   "erros": [
-    { "campo": "sexo", "erro": "Este cadastro ainda não tem ficha de pessoa física no ERP, e criá-la exige o sexo (F ou M). Pergunte ao cliente e mande o campo \"sexo\" junto." }
+    { "campo": "sexo", "erro": "Este cadastro ainda não tem ficha de pessoa física no ERP, e criá-la exige o sexo (F ou M). O nome não foi suficiente para deduzir — pergunte ao cliente e mande o campo \"sexo\" junto." }
   ]
 }
 ```
 
-O agente pergunta e repete a chamada com `"sexo": "F"`. Para quem já tem a
-linha — os outros 71% — o campo é opcional e nada muda.
+Pelas medições, isso acontece em cerca de 4% dos casos. O agente pergunta e
+repete a chamada com `"sexo": "F"`.
 
 **O CPF é único no ERP.** Mandando um CPF que já está em outro cadastro, a
 resposta é `422` no campo `cpf`, dizendo para consultar por CPF e seguir pelo

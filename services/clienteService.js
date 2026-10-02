@@ -184,6 +184,27 @@ async function montarCadastro(codigos) {
     });
 }
 
+// A ficha de pessoa física existe? E qual o nome, para deduzir o sexo quando
+// ela precisar ser criada.
+//
+// Numa consulta só, e FORA da transação de gravação: deduzir o sexo faz
+// chamada à API do IBGE, e nada que espera rede pode rodar com transação do
+// Firebird aberta — seguraria registro do ERP por segundos.
+async function fichaFisica(codigoPessoa) {
+    const linhas = await queryFb(
+        `SELECT ${texto('P.NOME', 40)} AS NOME, F.CODIGOPES AS TEMFICHA
+           FROM PESSOAS P
+           LEFT JOIN PESSOAFISICA F ON F.CODIGOPES = P.CODIGOPES
+          WHERE P.CODIGOPES = ?`,
+        [Number(codigoPessoa)]
+    );
+    if (linhas.length === 0) return null;
+    return {
+        nome: toTitleCase(limparValor(linhas[0].NOME)) || null,
+        existe: linhas[0].TEMFICHA !== null,
+    };
+}
+
 async function buscarPorTelefone(telefone) {
     return montarCadastro(await codigosPorTelefone(telefone));
 }
@@ -192,7 +213,7 @@ async function buscarPorCpf(cpf) {
     return montarCadastro(await codigosPorCpf(cpf));
 }
 
-module.exports = { buscarPorTelefone, buscarPorCpf, montarCadastro };
+module.exports = { buscarPorTelefone, buscarPorCpf, montarCadastro, fichaFisica };
 
 // --------------------------------------------------------------------------
 // Gravação no ERP
