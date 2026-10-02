@@ -99,6 +99,7 @@ O DDD é obrigatório: sem ele o mesmo número existe em vários estados.
 | `codigoPessoa` | Do único cadastro; `null` quando não houver exatamente um |
 | `faltandoTexto` | Do único cadastro; `""` quando não houver exatamente um |
 | `nomesCadastros` | Só em `MULTIPLOS`: `"Maria, João ou José"` |
+| `notificacaoRecente` | `true` se o notificador já avisou **este número** nas últimas horas |
 
 `situacao` segue o `faltandoTexto`, **não** o campo `completo`. São diferentes
 de propósito: cadastro sem telefone tem `completo: false`, mas não há o que
@@ -116,9 +117,40 @@ falta importa.
   "codigoPessoa": null,
   "faltandoTexto": "",
   "nomesCadastros": "Cicera, Nathalia ou Rita",
+  "notificacaoRecente": false,
   "clientes": [ "..." ]
 }
 ```
+
+Em `MULTIPLOS`, `primeiroNome` vem **vazio** de propósito: com três cadastros
+no mesmo telefone, não há como saber qual deles está escrevendo, e saudar pelo
+nome errado é pior que não saudar. Use `nomesCadastros` para perguntar qual é.
+
+Cada item de `clientes[]` mantém o próprio `primeiroNome`, porque ali é dado
+do cadastro, não resposta à consulta. **Para a saudação, leia o campo da raiz,
+não `clientes[0].primeiroNome`** — o primeiro da lista não é "o mais provável",
+é só o que o banco devolveu primeiro.
+
+### `notificacaoRecente` evita avisar duas vezes
+
+`true` quando o notificador enviou com sucesso alguma mensagem para **esse
+telefone** nas últimas horas. Serve para o agente não repetir "sua fórmula está
+pronta" para quem acabou de receber exatamente isso.
+
+- Conta só **envio confirmado**. Tentativa que falhou não avisou ninguém, e
+  contá-la faria o agente calar justamente para quem não recebeu nada.
+- A janela vem de `NOTIFICACAO_JANELA_HORAS` no `.env`, padrão **24**.
+- Vale o **telefone da consulta**, com a mesma normalização do cadastro: DDI e
+  9º dígito não decidem. Isso importa porque o número é gravado em duas formas
+  — o JID que a MultiAtend devolve costuma vir **sem** o 9º dígito, e
+  `554491135801` e `5544991135801` convivem na mesma coleção.
+- **Busca por CPF devolve sempre `false`**, porque não há telefone de origem.
+  Responder pelos números do cadastro mudaria a pergunta: um cadastro com três
+  telefones daria `true` por um aviso mandado a outro aparelho.
+- Independe de achar cadastro. Avisamos quem tem cadastro incompleto também, e
+  é justamente aí que o agente precisa saber.
+- **Nunca derruba a consulta.** Falhando a checagem, o campo vem `false` e o
+  erro é registrado no log — o cadastro é o que importa na resposta.
 
 ### A API não devolve o cadastro cru
 

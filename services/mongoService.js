@@ -1,3 +1,4 @@
+const { variantesDeTelefone } = require('../utils/telefone');
 const { getLogsCollection } = require('../config/db');
 
 /**
@@ -82,6 +83,53 @@ async function buscarAvisados(codigos) {
     }
 }
 
+// Já avisamos este telefone nas últimas N horas?
+//
+// Serve para o agente não repetir "sua fórmula está pronta" para quem acabou
+// de receber a mensagem. Conta só envio CONFIRMADO: `status: 'sucesso'`.
+// Tentativa que falhou não avisou ninguém, e tratá-la como aviso faria o
+// agente calar justamente para quem não recebeu nada.
+//
+// O telefone guardado tem duas formas, porque vem de dois caminhos:
+// `numeroEnvio` (o JID que a MultiAtend devolve, que na maioria dos números
+// NÃO tem o 9º dígito) ou `formatPhoneNumber` (que sempre põe o 9). As duas
+// levam DDI. Por isso a comparação usa as mesmas variantes da busca de
+// cadastro, cada uma com e sem o 55 na frente.
+async function notificouRecentemente(telefone, janelaHoras) {
+    const variantes = variantesDeTelefone(telefone);
+    if (variantes.length === 0) return false;
+
+    const candidatos = variantes.flatMap((v) => [v, `55${v}`]);
+    const desde = new Date(Date.now() - Number(janelaHoras) * 60 * 60 * 1000);
+
+    try {
+        const achado = await getLogsCollection().findOne(
+            {
+                status: 'sucesso',
+                telefoneEnviado: { $in: candidatos },
+                timestamp: { $gte: desde },
+            },
+            { projection: { _id: 1 } }
+        );
+        return achado !== null;
+    } catch (erro) {
+        // Esta checagem é um extra na resposta do cadastro. Deixá-la derrubar
+        // a consulta trocaria "o cliente tem cadastro completo" por um 502 —
+        // e o agente perderia o que realmente importa por causa de um aviso.
+        console.error('Erro ao checar notificação recente:', erro.message);
+        return false;
+    }
+}
+
+// A coleção de produção tem ~8.500 documentos e cresce todo dia. Sem índice,
+// cada consulta de integração varreria tudo.
+async function garantirIndices() {
+    await getLogsCollection().createIndex(
+        { telefoneEnviado: 1, status: 1, timestamp: -1 },
+        { name: 'avisorecente' }
+    );
+}
+
 function escaparRegex(texto) {
     return texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -139,4 +187,6 @@ module.exports = {
     findLogsAgrupados,
     contarAgrupados,
     montarFiltroBusca,
+    notificouRecentemente,
+    garantirIndices,
 };

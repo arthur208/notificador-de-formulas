@@ -66,3 +66,25 @@ test('exige a chave de cifragem', () => {
     delete semChave.APP_CRYPTO_KEY;
     assert.throws(() => resolverConfig(semChave), /APP_CRYPTO_KEY/);
 });
+
+// Janela do `notificacaoRecente`. O `|| 24` cobre ausente, vazio, zero e
+// texto não numérico — zero cair no padrão é de propósito, porque janela zero
+// desligaria a checagem em silêncio.
+test('janela de notificação cai em 24h quando ausente', () => {
+    assert.strictEqual(resolverConfig(ambienteMinimo).notificacaoJanelaHoras, 24);
+});
+
+test('janela de notificação aceita outro valor', () => {
+    const config = resolverConfig({ ...ambienteMinimo, NOTIFICACAO_JANELA_HORAS: '6' });
+    assert.strictEqual(config.notificacaoJanelaHoras, 6);
+});
+
+test('janela inválida, vazia ou zero cai no padrão em vez de desligar', () => {
+    for (const valor of ['', '0', 'abc', '  ']) {
+        const config = resolverConfig({ ...ambienteMinimo, NOTIFICACAO_JANELA_HORAS: valor });
+        assert.strictEqual(
+            config.notificacaoJanelaHoras, 24,
+            `falhou com ${JSON.stringify(valor)}`
+        );
+    }
+});

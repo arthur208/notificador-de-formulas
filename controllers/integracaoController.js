@@ -8,6 +8,8 @@ const { classificarErroErp } = require('../utils/erroErp');
 const { consultarCep, NAO_ENCONTRADO } = require('../services/cepService');
 const { resolverCodigoCidade } = require('../services/cidadeErpService');
 const { deduzirSexo } = require('../services/sexoService');
+const mongoService = require('../services/mongoService');
+const { config } = require('../config/db');
 
 // Consulta de cadastro para integração (chatbot, automações).
 //
@@ -37,6 +39,12 @@ async function buscarCliente(req, res) {
                 // Mesma função da busca por telefone: o agente recebe o
                 // primeiro nível idêntico, venha de onde vier.
                 ...resumirConsulta(resumos),
+                // Sempre false aqui: a pergunta é "avisamos ESTE telefone?", e
+                // a busca por CPF não tem telefone de origem. Responder pelos
+                // números do cadastro mudaria a pergunta — um cadastro com
+                // três telefones daria true por um aviso mandado a outro
+                // aparelho, que não é quem está conversando.
+                notificacaoRecente: false,
                 clientes: resumos,
             });
         }
@@ -47,13 +55,24 @@ async function buscarCliente(req, res) {
                 erro: 'Telefone inválido. Informe com DDD, por exemplo 44991135801.',
             });
         }
-        const resumos = (await clienteService.buscarPorTelefone(telefone)).map(resumir);
+        // Em paralelo: são bancos diferentes (ERP no Firebird, envios no
+        // Mongo) e nenhuma depende da outra. Em série somaria as duas esperas
+        // numa consulta que o agente faz no meio de uma conversa.
+        const [clientes, notificacaoRecente] = await Promise.all([
+            clienteService.buscarPorTelefone(telefone),
+            mongoService.notificouRecentemente(telefone, config.notificacaoJanelaHoras),
+        ]);
+        const resumos = clientes.map(resumir);
         return res.json({
             consultadoPor: 'telefone',
             // Ajuda a depurar "por que não achou": mostra o que foi procurado.
             variantes,
             encontrados: resumos.length,
             ...resumirConsulta(resumos),
+            // Já avisamos este número nas últimas horas? Independe de achar
+            // cadastro: avisamos quem não tem cadastro completo também, e o
+            // agente precisa saber disso justamente nesse caso.
+            notificacaoRecente,
             clientes: resumos,
         });
     } catch (erro) {
