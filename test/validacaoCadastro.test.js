@@ -1,6 +1,6 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert');
-const { validarCadastro, cpfValido } = require('../utils/validacaoCadastro');
+const { validarCadastro, cpfValido, normalizarSexo } = require('../utils/validacaoCadastro');
 
 const campos = (erros) => erros.map((e) => e.campo).sort();
 
@@ -109,5 +109,47 @@ describe('validação do cadastro', () => {
 
     test('CEP com 8 dígitos passa, com pontuação também', () => {
         assert.deepStrictEqual(validarCadastro({ endereco: { cep: '87.900-000' } }), []);
+    });
+});
+
+// O domínio SEXO do ERP é CHECK (VALUE IN ('F','M')) e NOT NULL. O campo
+// existe no contrato porque criar a ficha de pessoa física exige o valor, e
+// 29% dos clientes (14.464) não têm essa ficha.
+describe('sexo', () => {
+    test('aceita F e M', () => {
+        assert.deepStrictEqual(validarCadastro({ sexo: 'F' }), []);
+        assert.deepStrictEqual(validarCadastro({ sexo: 'M' }), []);
+    });
+
+    // O agente manda o que o cliente respondeu, não a letra do ERP.
+    test('aceita o que o cliente costuma responder', () => {
+        for (const v of ['f', 'm', 'feminino', 'Masculino', 'FEMININO', ' f ']) {
+            assert.deepStrictEqual(validarCadastro({ sexo: v }), [], `recusou ${JSON.stringify(v)}`);
+        }
+    });
+
+    test('normaliza para a letra do ERP', () => {
+        assert.strictEqual(normalizarSexo('feminino'), 'F');
+        assert.strictEqual(normalizarSexo('Masculino'), 'M');
+        assert.strictEqual(normalizarSexo(' f '), 'F');
+    });
+
+    test('recusa o que o ERP não aceita', () => {
+        for (const v of ['X', 'outro', 'nao informado', '1']) {
+            const erros = validarCadastro({ sexo: v });
+            assert.ok(
+                erros.some((e) => e.campo === 'sexo'),
+                `deixou passar ${JSON.stringify(v)}`
+            );
+        }
+    });
+
+    test('ausente não é erro: só é exigido ao criar a ficha', () => {
+        assert.deepStrictEqual(validarCadastro({ nome: 'Maria' }), []);
+    });
+
+    test('sexo é campo conhecido, não cai em "campos desconhecidos"', () => {
+        const erros = validarCadastro({ sexo: 'F' });
+        assert.ok(!erros.some((e) => /desconhecidos/.test(e.erro)));
     });
 });

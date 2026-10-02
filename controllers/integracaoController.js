@@ -4,6 +4,9 @@ const { validarCadastro } = require('../utils/validacaoCadastro');
 const { resumir, resumirConsulta } = require('../utils/resumoCliente');
 const { limparPayload } = require('../utils/limparPayload');
 const { logPayloadLimpo } = require('../middleware/logIntegracao');
+const { classificarErroErp } = require('../utils/erroErp');
+const { consultarCep, NAO_ENCONTRADO } = require('../services/cepService');
+const { resolverCodigoCidade } = require('../services/cidadeErpService');
 
 // Consulta de cadastro para integração (chatbot, automações).
 //
@@ -53,9 +56,79 @@ async function buscarCliente(req, res) {
             clientes: resumos,
         });
     } catch (erro) {
-        console.error('Erro na consulta de cliente:', erro.message);
-        return res.status(502).json({ erro: 'Não foi possível consultar o cadastro agora.' });
+        // A consulta não viola regra de banco, então na prática cai sempre em
+        // 502 ou 500. Passa pelo mesmo classificador para que um SQL quebrado
+        // nosso não se disfarce de ERP fora do ar e faça a integração repetir.
+        const { situacao } = classificarErroErp(erro);
+        console.error(`Erro na consulta de cliente (${situacao}):`, erro.message);
+        return res.status(situacao === 502 ? 502 : 500).json({
+            erro: situacao === 502
+                ? 'O ERP não respondeu. Pode tentar de novo.'
+                : 'Não foi possível consultar o cadastro agora.',
+        });
     }
+}
+
+// Erro de regra do banco no mesmo envelope da validação de entrada, para
+// quem integra ter uma forma só para tratar.
+function recusar(res, campo, mensagem) {
+    return res.status(422).json({
+        erro: 'O cadastro não passou na validação do ERP. Nada foi alterado.',
+        erros: [{ campo, erro: mensagem }],
+    });
+}
+
+// Descobre o CODIGOCID antes de gravar, quando veio CEP e não veio cidade.
+//
+// O ERP exige CODIGOCID em PESSOAENDERECOS e não tem tabela de CEP, então a
+// tradução passa por fora (cepService) e depois pela tabela CIDADES
+// (cidadeErpService). Resolvendo ANTES da transação, a recusa chega como 422
+// com o campo — em vez de estourar no meio da gravação e virar 502.
+//
+// Devolve null quando está tudo resolvido, ou { situacao, campo, erro }.
+async function preencherCidade(corpo) {
+    const e = corpo.endereco;
+    if (!e) return null;
+    if (e.codigoCidade) return null;   // quem integra mandou explícito; manda ela
+    if (!e.cep) return null;           // sem CEP não há o que resolver aqui
+
+    const cep = await consultarCep(e.cep);
+
+    if (cep.erro === NAO_ENCONTRADO) {
+        return {
+            situacao: 422,
+            campo: 'endereco.cep',
+            erro: 'CEP não encontrado. Confirme o CEP com o cliente.',
+        };
+    }
+    if (cep.erro) {
+        // Os dois provedores fora do ar. É indisponibilidade de verdade:
+        // repetir faz sentido, e por isso 502.
+        return {
+            situacao: 502,
+            campo: 'endereco.cep',
+            erro: 'Não foi possível consultar o CEP agora. Nada foi alterado.',
+        };
+    }
+
+    const cidade = await resolverCodigoCidade(cep);
+    if (!cidade) {
+        // O CEP existe, mas a cidade dele não está cadastrada no ERP. Criar a
+        // linha em CIDADES daqui encheria a tabela do ERP de duplicata.
+        return {
+            situacao: 422,
+            campo: 'endereco.cidade',
+            erro: `Cidade não identificada pelo CEP. O CEP é de ${cep.cidade}/${cep.uf}, que não está cadastrada no ERP.`,
+        };
+    }
+
+    e.codigoCidade = cidade.codigoCidade;
+    // Como a cidade foi decidida, para cidade errada no cadastro ter rastro.
+    logPayloadLimpo(
+        { cep: cep.cidade, uf: cep.uf, ibge: cep.ibge, fonte: cep.fonte, ...cidade },
+        'cidade resolvida pelo CEP'
+    );
+    return null;
 }
 
 // Atualiza o cadastro no ERP. Valida TUDO antes de gravar QUALQUER coisa e
@@ -106,6 +179,19 @@ async function atualizarCliente(req, res) {
     }
 
     try {
+        // Depois da validação de forma: não faz sentido consultar CEP de um
+        // payload que já está recusado, nem gastar chamada externa por isso.
+        //
+        // Dentro do try porque resolver a cidade consulta o Firebird, e a
+        // queda dele aqui precisa virar 502 pelo mesmo classificador — fora
+        // do try viraria 500 genérico no middleware de erros.
+        const problemaCidade = await preencherCidade(corpo);
+        if (problemaCidade) {
+            const { situacao, campo, erro } = problemaCidade;
+            if (situacao === 422) return recusar(res, campo, erro);
+            return res.status(situacao).json({ erro });
+        }
+
         const cliente = await clienteService.atualizarCadastro(codigo, corpo);
         // Mesmo resumo da consulta: se o PUT devolvesse o cadastro inteiro,
         // bastaria gravar qualquer coisa para ler o que o GET esconde.
@@ -113,25 +199,24 @@ async function atualizarCliente(req, res) {
         // sobrou campo para pedir ao cliente.
         return res.json({ atualizado: true, cliente: resumir(cliente) });
     } catch (erro) {
-        if (erro.situacao) {
-            return res.status(erro.situacao).json({ erro: erro.message });
-        }
-        // "Cannot transliterate character between character sets": o texto
-        // chegou numa codificação que o ERP não converte — quase sempre
-        // latin1 onde devia ser UTF-8. É entrada ruim, não ERP fora do ar,
-        // e responder 502 faria a integração repetir para sempre.
-        if (/transliterate/i.test(erro.message ?? '')) {
-            console.error('Texto em codificação inválida:', erro.message);
-            return res.status(400).json({
-                erro: 'O texto tem caractere que o ERP não aceita. Envie em UTF-8.',
-            });
+        // Recusa nossa que já sabe o campo, como endereço novo sem cidade.
+        if (erro.situacao === 422 && erro.campo) {
+            return recusar(res, erro.campo, erro.message);
         }
 
-        console.error('Erro ao atualizar cadastro:', erro.message);
-        return res.status(502).json({
-            erro: 'Não foi possível gravar no ERP. Nada foi alterado.',
-            detalhe: erro.message,
-        });
+        // O resto é classificado em utils/erroErp.js: regra do banco vira 422,
+        // indisponibilidade vira 502, e o que não dá para afirmar vira 500.
+        //
+        // Antes tudo caía em 502, inclusive o CODIGOCID nulo — que nenhuma
+        // repetição ia consertar, porque o banco nunca aceitaria aquele
+        // INSERT. A integração repetiria para sempre.
+        const { situacao, corpo: resposta } = classificarErroErp(erro);
+        console.error(
+            `Erro ao atualizar cadastro (${situacao}):`,
+            erro.message,
+            erro.gdscode ? `gdscode=${erro.gdscode}` : ''
+        );
+        return res.status(situacao).json(resposta);
     }
 }
 

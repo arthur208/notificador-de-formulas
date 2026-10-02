@@ -20,6 +20,18 @@ const LIMITES = {
 
 const TIPOS_FONE = ['celular', 'residencial', 'comercial', 'recado'];
 
+// O ERP aceita só estes dois, por CHECK no domínio.
+const SEXOS = ['F', 'M'];
+
+// O agente manda o que o cliente respondeu: "f", "feminino", "Masculino".
+// Converter aqui poupa a integração de conhecer a letra do ERP.
+function normalizarSexo(valor) {
+    const texto = String(valor ?? '').trim().toUpperCase();
+    if (texto.startsWith('F')) return 'F';
+    if (texto.startsWith('M')) return 'M';
+    return texto;
+}
+
 // Dígitos verificadores. Sem isso, "11111111111" entraria como CPF válido
 // e contaminaria o cadastro de forma difícil de desfazer.
 function cpfValido(digitos) {
@@ -48,7 +60,7 @@ function validarCadastro(dados) {
         return [{ campo: 'corpo', erro: 'Envie um objeto com os campos a atualizar.' }];
     }
 
-    const CONHECIDOS = ['nome', 'cpf', 'nascimento', 'email', 'telefones', 'endereco'];
+    const CONHECIDOS = ['nome', 'cpf', 'nascimento', 'sexo', 'email', 'telefones', 'endereco'];
     const desconhecidos = Object.keys(dados).filter((k) => !CONHECIDOS.includes(k));
     if (desconhecidos.length > 0) {
         // Campo com nome errado seria ignorado em silêncio, e quem integra
@@ -91,6 +103,15 @@ function validarCadastro(dados) {
             } else if (data.getUTCFullYear() < 1900) {
                 erro('nascimento', 'Anterior a 1900 — provável erro de digitação.');
             }
+        }
+    }
+
+    // O domínio SEXO do ERP é CHECK (VALUE IN ('F','M')) e NOT NULL: não há
+    // valor para "não informado". Por isso o campo existe aqui — ver o
+    // comentário em services/clienteService.js, no INSERT de PESSOAFISICA.
+    if (dados.sexo !== undefined && dados.sexo !== null) {
+        if (!SEXOS.includes(normalizarSexo(dados.sexo))) {
+            erro('sexo', `Use ${SEXOS.join(' ou ')} — é o que o ERP aceita.`);
         }
     }
 
@@ -159,4 +180,4 @@ function validarCadastro(dados) {
     return erros;
 }
 
-module.exports = { validarCadastro, cpfValido, LIMITES, TIPOS_FONE };
+module.exports = { validarCadastro, cpfValido, normalizarSexo, LIMITES, TIPOS_FONE, SEXOS };

@@ -256,6 +256,7 @@ pedido de apagar. Só `"__NULL__"` apaga.
 | `nome` | texto | 40 | O ERP sanitiza e recusa se ficar vazio |
 | `cpf` | texto | 11 dígitos | Dígitos verificadores são conferidos |
 | `nascimento` | texto | `AAAA-MM-DD` | Não pode ser futuro nem anterior a 1900 |
+| `sexo` | texto | `F` ou `M` | Aceita "feminino"/"masculino". **Obrigatório** em um caso — ver abaixo |
 | `email` | texto | 50 | `null` remove o e-mail |
 | `telefones` | lista | — | `[{ "tipo": "celular", "numero": "44991135801" }]` |
 | `endereco.logradouro` | texto | 40 | |
@@ -263,7 +264,70 @@ pedido de apagar. Só `"__NULL__"` apaga.
 | `endereco.complemento` | texto | 40 | |
 | `endereco.bairro` | texto | 20 | |
 | `endereco.cep` | texto | 8 dígitos | Pontuação é aceita e removida |
-| `endereco.codigoCidade` | inteiro | — | Da resposta do `GET`, não invente |
+| `endereco.codigoCidade` | inteiro | — | Opcional: mandando o `cep`, o servidor resolve |
+
+### Gravar CPF ou nascimento pode exigir `sexo`
+
+O CPF e a data de nascimento ficam numa tabela separada do ERP
+(`PESSOAFISICA`), e **14.464 clientes — 29% da base — não têm linha nela.**
+Para esses, gravar CPF significa criar a linha, e o ERP exige o sexo: o
+domínio é `CHECK (VALUE IN ('F','M'))` e `NOT NULL`, sem valor para "não
+informado".
+
+Não há palpite aceitável. Chutar `F` acertaria 63% das vezes e gravaria o sexo
+errado de milhares de pessoas no cadastro que o balcão lê. Então a API recusa
+e devolve `422` pedindo o campo:
+
+```json
+{
+  "erro": "O cadastro não passou na validação do ERP. Nada foi alterado.",
+  "erros": [
+    { "campo": "sexo", "erro": "Este cadastro ainda não tem ficha de pessoa física no ERP, e criá-la exige o sexo (F ou M). Pergunte ao cliente e mande o campo \"sexo\" junto." }
+  ]
+}
+```
+
+O agente pergunta e repete a chamada com `"sexo": "F"`. Para quem já tem a
+linha — os outros 71% — o campo é opcional e nada muda.
+
+**O CPF é único no ERP.** Mandando um CPF que já está em outro cadastro, a
+resposta é `422` no campo `cpf`, dizendo para consultar por CPF e seguir pelo
+cadastro existente. Isso acontece: a base tem gente repetida, com 1.405
+telefones compartilhados por 3.036 pessoas.
+
+### A cidade sai do CEP sozinha
+
+O ERP exige o código da cidade em toda linha de endereço, e **não tem tabela de
+CEP** — a tabela `CIDADES` tem nome, UF e código do IBGE, nada mais. Então
+quem integra não precisa saber disso: mandando `endereco.cep` sem
+`endereco.codigoCidade`, o servidor resolve antes de gravar.
+
+```
+CEP -> ViaCEP (ou BrasilAPI) -> código IBGE -> CIDADES -> CODIGOCID
+```
+
+Mandando `codigoCidade` explícito, ele é respeitado e nenhuma consulta externa
+acontece.
+
+Dois provedores, e a ordem importa: o **ViaCEP decide** e a **BrasilAPI só
+entra quando o ViaCEP não responde**. Medido, para o CEP inexistente
+`99999999`: o ViaCEP recusa e a BrasilAPI devolve `Sarandi/PR`. Tratar
+"não existe" como motivo para perguntar ao segundo provedor trocaria a cidade
+de um cliente real por causa de um dígito errado — e a resposta teria cara de
+certa. Por isso "este CEP não existe" é resposta final.
+
+**CEP genérico de cidade não funciona** — os que terminam em `-000` e valem
+para o município todo. Conferido nos dois provedores: `87300000` (Campo
+Mourão), `13000000` (Campinas), `69900000` (Rio Branco) e `06800000` (Embu das
+Artes) são recusados pelos dois. Alguns funcionam, como `87900000` de Loanda;
+não há regra. Peça o CEP da rua ao cliente, ou mande `codigoCidade`.
+
+A tabela `CIDADES` do ERP tem duplicata: 26 códigos do IBGE aparecem em mais
+de uma linha, e as linhas não são equivalentes — há bairro cadastrado como
+cidade (`ITAQUERA/SP` com o IBGE de São Paulo) e nome com acento quebrado
+(`MARINGÃ `). O servidor escolhe a linha **mais usada** nos endereços
+existentes. Nunca cria cidade nova: cidade que o CEP aponta e o ERP não tem
+devolve `422`, em vez de encher a tabela do ERP de mais duplicata.
 
 Tipos de telefone: `celular`, `residencial`, `comercial`, `recado`. Um de cada
 por requisição. `"numero": null` apaga aquele telefone.
@@ -290,6 +354,26 @@ tudo de uma vez:
 
 Campo com nome errado é recusado em vez de ignorado — senão a integração
 acharia que gravou.
+
+### O ERP também recusa, e no mesmo formato
+
+Depois da nossa validação vem a do banco, que tem regra própria em 76
+gatilhos. Quando ela recusa, a resposta é **o mesmo envelope**, com o campo do
+seu payload — não o nome da coluna do ERP:
+
+```json
+{
+  "erro": "O cadastro não passou na validação do ERP. Nada foi alterado.",
+  "erros": [
+    { "campo": "endereco.cidade", "erro": "Cidade não identificada pelo CEP." }
+  ]
+}
+```
+
+Isso é `422`, não `502`. A diferença é prática: **`502` significa "repita"**, e
+repetir um cadastro que o banco nunca vai aceitar não conserta nada — só enche
+a fila do agente. Então `502` ficou reservado para ERP fora do ar ou falha de
+conexão, e o que não dá para afirmar vira `500`.
 
 ### Resposta de sucesso
 
@@ -341,12 +425,16 @@ funcionário devolvem `409`.
 | `401` | Token ausente ou errado | Conferir o `Authorization` |
 | `404` | `codigoPessoa` não existe | Buscar de novo pelo `GET` |
 | `409` | O cadastro não é de cliente | Não alterar por aqui |
-| `422` | Validação falhou | Ler `erros[]` e corrigir — nada foi gravado |
+| `422` | Validação falhou — nossa ou do ERP, incluindo CEP e cidade | Ler `erros[]` e corrigir. **Não repita sem mudar o payload** |
 | `429` | Tentativas demais com token errado | Esperar 15 minutos |
 | `413` | Corpo grande demais | Reduzir o payload |
 | `415` | `Content-Type` não é `application/json` | Corrigir o cabeçalho |
-| `500` | Token não configurado no servidor | Avisar quem administra |
-| `502` | ERP indisponível | Repetir; nada foi gravado |
+| `500` | Token não configurado, ou erro nosso | Avisar quem administra; repetir não resolve |
+| `502` | **Só** ERP ou provedor de CEP fora do ar | Repetir; nada foi gravado |
+
+O `422` e o `502` são a distinção que importa para quem automatiza: `502` é a
+única resposta que vale repetir sozinha. `422` precisa de payload diferente, e
+`500` precisa de deploy.
 
 ---
 

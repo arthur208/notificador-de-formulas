@@ -3,6 +3,7 @@ const { decodeFBString, toTitleCase } = require('../utils/helpers');
 const { variantesDeTelefone, soDigitos } = require('../utils/telefone');
 const { listaInteirosSegura } = require('../utils/lotes');
 const { limpar: semPreenchimento } = require('../utils/endereco');
+const { normalizarSexo } = require('../utils/validacaoCadastro');
 
 // O ERP guarda telefone com espaço e parêntese no meio — "44 34255793",
 // "44  4231513". Comparar o texto cru nunca casa, então a limpeza acontece
@@ -246,6 +247,15 @@ function emTransacao(trabalho) {
     });
 }
 
+// A cidade "." do ERP (CODIGOCID 6, UF PR, COD_MUNICIPIOIBGE '0000000'), que
+// é o "não informado" dele. Só serve para satisfazer o domínio NOT NULL de
+// PESSOAFISICA.CODIGOCID — a naturalidade, que esta API nunca grava.
+const CIDADE_NAO_INFORMADA = 6;
+
+// PESSOAFISICA.RGORGAOESP também é NOT NULL. "SSP" é o padrão do ERP: está
+// em 36.720 das 36.740 linhas.
+const ORGAO_EMISSOR_PADRAO = 'SSP';
+
 const COLUNA_FONE = {
     celular: 'FONECEL',
     residencial: 'FONERES',
@@ -278,10 +288,53 @@ async function atualizarCadastro(codigoPessoa, dados) {
                 [String(dados.nome).trim(), codigo]);
         }
 
-        if (dados.cpf !== undefined || dados.nascimento !== undefined) {
+        if (dados.cpf !== undefined || dados.nascimento !== undefined || dados.sexo !== undefined) {
             const existe = await rodar('SELECT CODIGOPES FROM PESSOAFISICA WHERE CODIGOPES = ?', [codigo]);
             if (existe.length === 0) {
-                await rodar('INSERT INTO PESSOAFISICA (CODIGOPES) VALUES (?)', [codigo]);
+                // CODIGOCID aqui é a NATURALIDADE, não o endereço. A coluna
+                // não tem NOT NULL, mas o domínio CODIGO tem — e o Firebird
+                // cobra o domínio. Omitir a coluna devolvia
+                // "Validation error for column PESSOAFISICA.CODIGOCID" e
+                // derrubava a transação inteira, levando junto o endereço que
+                // já havia sido gravado. Era por isso que a falha parecia ser
+                // do endereço.
+                //
+                // Esta API não sabe a naturalidade de ninguém e não vai
+                // inventar: grava a cidade "." do próprio ERP, que é o que
+                // ele usa para "não informado" e já aparece em 9 cadastros.
+                // Preencher com Loanda daria a um cliente um local de
+                // nascimento que ninguém informou.
+                //
+                // RGORGAOESP é a segunda coluna obrigatória aqui, e só
+                // apareceu quando o INSERT foi testado de verdade contra o
+                // banco — a de cidade mascarava a dela. "SSP" é o que o ERP
+                // usa em 36.720 das 36.740 linhas.
+                //
+                // SEXO é a terceira, e esta não tem padrão possível: o
+                // domínio é CHECK (VALUE IN ('F','M')) e NOT NULL, sem valor
+                // para "não informado". Chutar 'F' acertaria 63% das vezes e
+                // gravaria o sexo errado de milhares de pessoas no cadastro
+                // do ERP, onde o balcão lê. Então o cadastro é recusado e o
+                // agente pergunta — são 14.464 clientes sem esta linha, 29%
+                // da base, e para todos eles isso vai acontecer.
+                if (dados.sexo === undefined || dados.sexo === null) {
+                    throw Object.assign(
+                        new Error(
+                            'Este cadastro ainda não tem ficha de pessoa física no ERP, '
+                            + 'e criá-la exige o sexo (F ou M). Pergunte ao cliente e '
+                            + 'mande o campo "sexo" junto.'
+                        ),
+                        { situacao: 422, campo: 'sexo' }
+                    );
+                }
+                await rodar(
+                    `INSERT INTO PESSOAFISICA (CODIGOPES, CODIGOCID, RGORGAOESP, SEXO)
+                     VALUES (?, ?, ${entrada(7)}, ?)`,
+                    [codigo, CIDADE_NAO_INFORMADA, ORGAO_EMISSOR_PADRAO, normalizarSexo(dados.sexo)]
+                );
+            } else if (dados.sexo !== undefined && dados.sexo !== null) {
+                await rodar('UPDATE PESSOAFISICA SET SEXO = ? WHERE CODIGOPES = ?',
+                    [normalizarSexo(dados.sexo), codigo]);
             }
             if (dados.cpf !== undefined) {
                 await rodar('UPDATE PESSOAFISICA SET CPF = ? WHERE CODIGOPES = ?',
@@ -337,9 +390,27 @@ async function atualizarCadastro(codigoPessoa, dados) {
             const e = dados.endereco;
             const existe = await rodar('SELECT CODIGOPE FROM PESSOAENDERECOS WHERE CODIGOPES = ?', [codigo]);
             if (existe.length === 0) {
+                // CODIGOCID, COR, COB e ENT são NOT NULL em PESSOAENDERECOS.
+                // O insert antigo mandava só as duas chaves e NUNCA funcionou
+                // — e são 3.716 clientes sem linha de endereço, então não era
+                // caso hipotético: para todos eles o PUT falhava sempre.
+                //
+                // Sem cidade não há linha de endereço possível. Quem resolve
+                // o CEP é o controlador, antes de chegar aqui; chegando sem
+                // cidade, o pedido é recusado com 422 em vez de morrer no
+                // meio da transação com mensagem do Firebird.
+                if (!e.codigoCidade) {
+                    throw Object.assign(
+                        new Error('Cidade não identificada pelo CEP.'),
+                        { situacao: 422, campo: 'endereco.cidade' }
+                    );
+                }
+                // S em todos os três é o que o ERP usa: 48.500 de 48.594
+                // endereços em COR, 48.524 em COB, 48.557 em ENT.
                 await rodar(
-                    'INSERT INTO PESSOAENDERECOS (CODIGOPE, CODIGOPES) VALUES (GEN_ID(GEN_PESSOAENDERECOS, 1), ?)',
-                    [codigo]
+                    `INSERT INTO PESSOAENDERECOS (CODIGOPE, CODIGOPES, CODIGOCID, COR, COB, ENT)
+                     VALUES (GEN_ID(GEN_PESSOAENDERECOS, 1), ?, ?, 'S', 'S', 'S')`,
+                    [codigo, Number(e.codigoCidade)]
                 );
             }
             const partes = [];
